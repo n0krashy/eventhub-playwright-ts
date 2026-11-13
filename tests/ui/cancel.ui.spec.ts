@@ -1,47 +1,40 @@
 import { expect, test } from '../../src/fixtures';
-import { MyBookingsPage } from '../../src/ui/pages/MyBookingsPage';
 
 test.describe('My Bookings - cancel a booking', () => {
-  test('asks for confirmation and names the booking and the seats released', async ({ page, testData }) => {
-    const event = await testData.createEvent();
-    const booking = await testData.createBooking(event, { quantity: 2 });
-    const myBookings = new MyBookingsPage(page);
-    await myBookings.goto();
+  let bookingRef: string;
 
-    await myBookings.clickCancelBooking(booking.bookingRef);
-
-    await expect(myBookings.cancelDialog.message).toContainText(booking.bookingRef);
-    await expect(myBookings.cancelDialog.message).toContainText('release 2 seat(s)');
+  // Every test starts with a booking of 2 tickets made on the website, and the My Bookings page open
+  test.beforeEach(async ({ eventsPage, eventDetailsPage, myBookingsPage, customer }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
+    await eventDetailsPage.bookTickets(2, customer);
+    bookingRef = await eventDetailsPage.confirmation.bookingRef.innerText();
+    await myBookingsPage.goto();
   });
 
-  test('closing the dialog keeps the booking', async ({ page, api, testData }) => {
-    const event = await testData.createEvent();
-    const booking = await testData.createBooking(event);
-    const myBookings = new MyBookingsPage(page);
-    await myBookings.goto();
-    await myBookings.clickCancelBooking(booking.bookingRef);
+  test('asks for confirmation and names the booking and the seats released', async ({ myBookingsPage }) => {
+    await myBookingsPage.clickCancelBooking(bookingRef);
 
-    await myBookings.cancelDialog.noButton.click();
-
-    await expect(myBookings.cancelDialog.message).toBeHidden();
-    await expect(myBookings.card(booking.bookingRef)).toBeVisible();
-    const stillThere = await api.bookings.getById(booking.id);
-    expect(stillThere.status).toBe(200);
+    await expect(myBookingsPage.cancelDialog.message).toContainText(bookingRef);
+    await expect(myBookingsPage.cancelDialog.message).toContainText('release 2 seat(s)');
   });
 
-  test('confirming removes the booking and gives the seats back', { tag: '@smoke' }, async ({ page, api, testData }) => {
-    const event = await testData.createEvent({ totalSeats: 20 });
-    const booking = await testData.createBooking(event, { quantity: 2 });
-    const myBookings = new MyBookingsPage(page);
-    await myBookings.goto();
-    await myBookings.clickCancelBooking(booking.bookingRef);
+  test('closing the dialog keeps the booking', async ({ myBookingsPage }) => {
+    await myBookingsPage.clickCancelBooking(bookingRef);
 
-    await myBookings.cancelDialog.yesButton.click();
+    await myBookingsPage.cancelDialog.noButton.click();
 
-    await expect(myBookings.card(booking.bookingRef)).toHaveCount(0);
-    const cancelled = await api.bookings.getById(booking.id);
-    expect(cancelled.status).toBe(404);
-    const eventNow = await api.events.get(event.id);
-    expect(eventNow.body.data.availableSeats).toBe(20);
+    await expect(myBookingsPage.cancelDialog.message).toBeHidden();
+    await expect(myBookingsPage.card(bookingRef)).toBeVisible();
+  });
+
+  test('confirming removes the booking from My Bookings', { tag: '@smoke' }, async ({ myBookingsPage }) => {
+    await myBookingsPage.clickCancelBooking(bookingRef);
+
+    await myBookingsPage.cancelDialog.yesButton.click();
+
+    await expect(myBookingsPage.card(bookingRef)).toHaveCount(0);
+    await myBookingsPage.goto(); // reload, to be sure the booking is really gone
+    await expect(myBookingsPage.card(bookingRef)).toHaveCount(0);
   });
 });

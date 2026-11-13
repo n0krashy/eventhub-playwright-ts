@@ -1,7 +1,7 @@
 import { expect, test as setup } from '@playwright/test';
 import { AuthClient } from '../src/api/clients/AuthClient';
 import { newApiContext } from '../src/api/context';
-import type { Credentials } from '../src/api/models';
+import type { Credentials } from '../src/api/models/auth';
 import { saveSessions, STORAGE_STATE_PATH, type Session } from '../src/auth/session';
 import { env } from '../src/config/env';
 import { LoginPage } from '../src/ui/pages/LoginPage';

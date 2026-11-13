@@ -1,6 +1,5 @@
 import { expect, test } from '../../src/fixtures';
 import { env } from '../../src/config/env';
-import { LoginPage } from '../../src/ui/pages/LoginPage';
 
 test.describe('Login', () => {
   test('the saved login state keeps the user logged in', { tag: '@smoke' }, async ({ page, sessions }) => {
@@ -13,9 +12,7 @@ test.describe('Login', () => {
     // start without any saved login
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test('a user can log in with valid credentials', async ({ page }) => {
-      const loginPage = new LoginPage(page);
-
+    test('a user can log in with valid credentials', async ({ page, loginPage }) => {
       await loginPage.goto();
       await loginPage.login(env.primary);
 

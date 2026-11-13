@@ -1,5 +1,5 @@
 import type { APIResponse } from '@playwright/test';
-import type { FieldError } from './models';
+import type { FieldError } from './models/common';
 
 export type ApiResponse<Body> = { status: number; body: Body };
 

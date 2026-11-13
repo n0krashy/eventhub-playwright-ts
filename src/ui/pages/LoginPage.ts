@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import type { Credentials } from '../../api/models';
+import type { Credentials } from '../../api/models/auth';
 
 export class LoginPage {
   readonly emailInput: Locator;

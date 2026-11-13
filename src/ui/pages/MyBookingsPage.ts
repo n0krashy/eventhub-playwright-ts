@@ -1,11 +1,19 @@
 import type { Locator, Page } from '@playwright/test';
-import { CancelDialog } from '../components/CancelDialog';
 
 export class MyBookingsPage {
-  readonly cancelDialog: CancelDialog;
+  // The "Cancel this booking?" pop-up
+  readonly cancelDialog: {
+    message: Locator;
+    yesButton: Locator;
+    noButton: Locator; // labelled "Cancel", but it only closes the pop-up and keeps the booking
+  };
 
   constructor(private page: Page) {
-    this.cancelDialog = new CancelDialog(page);
+    this.cancelDialog = {
+      message: page.getByText('This will cancel'),
+      yesButton: page.locator('#confirm-dialog-yes'),
+      noButton: page.getByRole('button', { name: 'Cancel', exact: true }),
+    };
   }
 
   async goto(): Promise<void> {

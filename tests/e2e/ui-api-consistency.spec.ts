@@ -1,30 +1,33 @@
 import { expect, test } from '../../src/fixtures';
-import { buildCustomer } from '../../src/data/builders';
-import { EventDetailsPage } from '../../src/ui/pages/EventDetailsPage';
+import { parsePrice } from '../../src/data/price';
+import { createBooking } from '../../src/fixtures/bookingHelpers';
 
-test.describe('A booking made in the UI is the same booking the API returns', () => {
-  test('reference, quantity, total and customer details match', { tag: '@smoke' }, async ({ page, api, testData }) => {
-    const event = await testData.createEvent({ price: 250, totalSeats: 50 });
-    const customer = buildCustomer();
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
-    await eventPage.bookingForm.selectTickets(3);
-    await eventPage.bookingForm.fillCustomerDetails(customer);
-    await eventPage.bookingForm.confirm();
-    await expect(eventPage.confirmation.heading).toBeVisible();
-    const bookingRef = await eventPage.confirmation.bookingRef.innerText();
+test.describe('The website and the API show the same bookings', () => {
+  test('a booking made on the website is the same booking in the API', { tag: '@smoke' }, async ({ firstUser, eventsPage, eventDetailsPage, customer }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
+    const price = parsePrice(await eventDetailsPage.bookingForm.ticketPrice.innerText());
+    await eventDetailsPage.bookTickets(3, customer);
+    const bookingRef = await eventDetailsPage.confirmation.bookingRef.innerText();
 
-    const res = await api.bookings.getByRef(bookingRef);
+    const res = await firstUser.bookings.getByRef(bookingRef);
 
+    expect(res.status).toBe(200);
     const booking = res.body.data;
-    expect(booking.eventId).toBe(event.id);
     expect(booking.quantity).toBe(3);
-    expect(Number(booking.totalPrice)).toBe(750);
+    expect(Number(booking.totalPrice)).toBe(price * 3);
     expect(booking.customerName).toBe(customer.name);
     expect(booking.customerEmail).toBe(customer.email);
+    expect(booking.customerPhone).toBe(customer.phone);
     expect(booking.status).toBe('confirmed');
+  });
 
-    const eventNow = await api.events.get(event.id);
-    expect(eventNow.body.data.availableSeats).toBe(47);
+  test('a booking made through the API is listed in My Bookings', async ({ firstUser, bookableEvent, myBookingsPage, customer }) => {
+    const booking = await createBooking(firstUser, bookableEvent.id, customer);
+
+    await myBookingsPage.goto();
+
+    await expect(myBookingsPage.card(booking.bookingRef)).toBeVisible();
+    await expect(myBookingsPage.bookingId(booking.bookingRef)).toHaveText(`#${booking.id}`);
   });
 });

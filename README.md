@@ -31,8 +31,8 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 | 4 | **Input rules are not in the story:** quantity 1-10, name at least 2 characters, phone at least 10 characters with digits and `+ - ( )` and spaces only, valid email. They exist only in code and Swagger. | Swagger + live validation errors |
 | 5 | **AC2 has no currency or rounding rule.** The UI shows `$`; the API has no currency field. Money is returned as a **string** (`"300"`). The total is computed server-side and shown live in the UI before confirming. | Live responses, UI |
 | 6 | **"Booking reference" is undefined:** format, uniqueness and whether it is emailed. | Live: `D-XXXXXX` |
-| 7 | **AC3 "My Bookings"** says nothing about ordering, paging, status, or what happens to a cancelled booking. | Swagger (`PaginationMeta` exists) |
-| 8 | **AC4 says "cancel", the system hard-deletes.** After cancelling, the booking is gone (`GET` returns 404), there is no `cancelled` status, no history, no refund notion. The story also omits that seats are returned and that a confirmation dialog appears. | Live |
+| 7 | **AC3 "My Bookings"** says nothing about ordering, paging, status, or what happens to a cancelled booking. `GET /bookings` is paged (10 per page by default) and the ordering is not specified. | Swagger (`PaginationMeta`, `page`, `limit`) |
+| 8 | **AC4 says "cancel", the system hard-deletes.** After cancelling, the booking is gone (`GET` returns 404), so the `cancelled` status listed in the docs never appears, and there is no history or refund notion. The story also omits that seats are returned and that a confirmation dialog appears. | Live |
 | 9 | **Capacity and dates are not covered:** sold-out behaviour, simultaneous bookings for the last seat, and bookings for events in the past. | Live (see 2.2) |
 
 ### 2.2 Where the application does not match the story or the docs
@@ -43,15 +43,17 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 | B | **`totalPrice` type:** docs example is a number, API returns a string. | Live. Test in `docs-mismatch.api.spec.ts` |
 | C | **Swagger does not declare auth on the Bookings endpoints** (no lock icon), but they require a Bearer token. | Swagger vs live 401 |
 | D | **Ownership responses are inconsistent and undocumented:** another user's booking gives **403** on `GET /bookings/{id}` and `GET /bookings/ref/{ref}`, but **404** on `DELETE`. The 403 also confirms that a booking exists, and ids are sequential. Neither code is in the docs. | Live, two users |
-| E | **Past events can be booked.** All three seeded events are dated April to October 2026; a booking on the 2026-10-20 event was accepted on 2026-11-11. | Live |
+| E | **Past events can be booked, in the API and in the UI.** All three seeded events are dated April to October 2026; a booking on the 2026-10-20 event was accepted on 2026-11-11, and the UI shows a normal Book Now button for them. | Live |
 | F | **Register docs promise an isolated sandbox** ("events and bookings are private to their account"), but new users all see the same seeded events (ids 283-285) with heavily drained seats (for example 8 of 500 left). Seeded events look shared. | Live, `GET /events` for fresh users |
 | G | **`quantity: "2"` (string) is accepted** although the schema says integer. | Live. Test in `docs-mismatch.api.spec.ts` |
-| H | **Phone rules are under-documented:** Swagger shows only `minLength: 10`; the API also rejects letters. | Live validation messages |
+| H | **Phone rules are under-documented:** Swagger shows only `minLength: 10`; the API also rejects letters and accepts `+ - ( )` and spaces. The UI message says "Enter a valid 10-digit phone", yet a 12-character `+971...` number is accepted. | Live validation messages, UI |
 | I | **Sold-out and "not enough seats" return 400**, the same code as field validation (409 is more usual), so they can only be told apart by message text. | Live |
 | J | **Booking email need not match the account:** user B booked with user A's email address. Is a confirmation email sent there? | Live |
 | K | **Docs copy/paste error:** the `500` example body reads "Resource not found" on every endpoint. | Swagger |
 | L | **Login errors differ from the docs.** Swagger says an unknown email gives `404 "User not found"` and a wrong password `400 "Invalid credentials"`; a failed login for an unregistered account returned `400 "Invalid email or password"` (to be confirmed with a deliberate wrong-password and unknown-email pair). Wrong credentials and duplicate email both use 400 (401 / 409 are more usual). | Swagger vs live setup failure |
-| M | **UI:** the dialog's dismiss button is labelled "Cancel" in a *cancel booking* flow, which is easy to misread. The "View My Bookings" `<button>` sits inside an `<a>` (invalid HTML). The confirmation page logged 43 console errors (not investigated). | UI / DevTools |
+| M | **Docs list a `cancelled` status and a status filter, but `DELETE` removes the booking**, so the status can never be seen. Event `price` is a number in the docs and a string live. | Swagger vs live |
+| N | **Undocumented "Clear all bookings" button** on My Bookings. It is not in the story or the docs, and it is destructive, so the tests never use it (the environment is shared). | UI |
+| O | **UI:** the dialog's dismiss button is labelled "Cancel" in a *cancel booking* flow, which is easy to misread. The "View My Bookings" `<button>` sits inside an `<a>` (invalid HTML). The confirmation page logged 43 console errors (not investigated). | UI / DevTools |
 
 ### 2.3 Questions I would ask the Product Owner
 
@@ -71,67 +73,93 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 
 ```
 src/
-  config/env.ts            all configuration + credentials (env vars only)
+  config/env.ts              all configuration + credentials (env vars only)
   api/
-    context.ts             the ONLY place that attaches the Bearer token
-    clients/               AuthClient, EventsClient, BookingsClient (thin, typed, no assertions)
-    models.ts, response.ts response types (from live responses) + one small helper
-  auth/session.ts          where setup stores tokens / browser state
-  data/builders.ts         event, customer and booking builders, unique data per run
-  fixtures/                api / otherApi / anonApi / testData (create data + cleanup after each test)
-  ui/
-    pages/                 LoginPage, EventDetailsPage, MyBookingsPage
-    components/            BookingForm, BookingConfirmation, CancelDialog
+    context.ts               the ONLY place that attaches the Bearer token
+    clients/                 AuthClient, EventsClient, BookingsClient (thin, typed, no assertions)
+    models/                  one file per resource: common, auth, event, booking
+    response.ts              ApiResponse + small helpers
+  auth/session.ts            where setup stores tokens / browser state
+  data/
+    builders.ts              unique customer, booking and event inputs
+    price.ts                 "$1,500" <-> 1500
+  fixtures/
+    apiFixtures.ts           firstUser, secondUser, noUser (and the worker-scoped sessions fixture)
+    dataFixtures.ts          customer, bookableEvent, almostSoldOutEvent, privateEvent
+    pageFixtures.ts          loginPage, eventsPage, eventDetailsPage, myBookingsPage
+    index.ts                 merges the three above via mergeTests; every spec imports from here
+    bookingHelpers.ts        createBooking, cancelBookingsOf (cleanup)
+  ui/pages/                  LoginPage, EventsPage, EventDetailsPage, MyBookingsPage
+                             (one class per page; areas such as the booking form, the
+                             confirmation card and the cancel dialog are locator groups inside it)
 tests/
-  global.setup.ts          health check, sessions for both users, one real UI login -> storage state
-  api/  ui/  e2e/          specs (every test is an explicit `test(...)`, no loops generating tests)
+  global.setup.ts            health check, sessions for both users, one real UI login
+  api/  ui/  e2e/            specs (every test is an explicit `test(...)`, no loops generating tests)
 ```
 
 **Decisions and why**
 
-- **Playwright for both UI and API (TypeScript only).** One language, one runner, one report, and the UI and API tests share auth, config and fixtures. A second stack (RestAssured) would double the tooling for a team that grows this suite. The trade-off is giving up RestAssured's fluent assertions; the typed clients and small helpers make up for it.
-- **Authorization lives in the framework, never in tests.** `global.setup.ts` authenticates once per run; fixtures give each test an already-authorised API client (`api`), a second user (`otherApi`) and an anonymous one (`anonApi`). UI tests start from a saved browser state. Only the login-form test touches credentials.
-- **UI state comes from a real login.** The setup logs in through the actual form once and saves the browser state, rather than guessing which `localStorage` keys the app needs. Swapping this for "API login + injected token" later is a one-file change.
-- **Every test owns its data.** Each test creates its own event (known price and capacity) through the API, so totals and seat counts are exact and parallel-safe, and the shared, drained seeded events are never asserted on.
-- **Cleanup is a fixture, not a habit.** `testData` cancels the bookings on the test's events, then deletes the events, even when the test fails. A cleanup problem is logged as a warning. Seeded data is never touched.
-- **Layering:** clients and page objects contain no assertions; specs own all assertions. Money is compared as numbers, not strings.
-- **Plain code over clever code.** Response types are simple (no unions or unwrap helpers), locators use ids, test ids or plain button/heading names, and `exact: true` is used only where one label sits inside another (`+`, and `Cancel` vs `Cancel Booking`).
+- **Playwright for both UI and API (TypeScript only).** One language, one runner, one report; UI and API tests share auth, config and fixtures. A second stack would double the tooling for a team growing this suite.
+- **Authorization lives in the framework, never in tests.** `global.setup.ts` authenticates once per run. Fixtures give each test an authorised API client (`firstUser`), a second user (`secondUser`) and an anonymous one (`noUser`). UI tests start from a saved browser state obtained through one real UI login.
+- **Existing events first, own events only where unavoidable.** The story is about booking, not about managing events, so tests use the seeded events: `bookableEvent` is the first event with at least 10 seats, and `almostSoldOutEvent` is the seeded event with fewer than 10 seats (World Tech Summit, 8 seats), used for the "more tickets than seats left" cases in the UI and the API.
+- **The one exception:** four seat-count tests (`bookings.seats.api.spec.ts`: booking reduces seats, cancel restores them, booking exactly the remaining seats, sold out). They need an event nobody else is booking in parallel, so they create a 10-seat event through the `privateEvent` fixture and delete it afterwards.
+- **UI tests use no API in their flow.** They open Events, take the first card, read the price from the page and book through the form. The API is used only for login in setup and for cleanup.
+- **Cleanup by customer email.** Every test gets a unique customer (`customer.<run>-<n>@example.com`). After the test, the fixture lists all bookings (paged, see assumptions) and cancels those with that email, even if the test failed. A cleanup problem is a warning, not a test failure. "Clear all bookings" is never used.
+- **Layering:** clients and page objects contain no assertions; specs own all assertions. Money is compared as numbers (`parsePrice`), not strings.
+- **Plain code over clever code.** Locators use ids, test ids, or button and heading names; `exact: true` only where one label sits inside another. The only regex-like check is the documented `EVT-` format test.
 - **Known issues are executable.** `docs-mismatch.api.spec.ts` asserts what the docs promise and is marked `test.fail`, so CI stays green while the mismatch exists and goes red when it is fixed, which is the cue to promote the test.
 
-**Why these tests (and not more)**
+**The 61 tests**
 
-- **API-heavy.** Validation boundaries, capacity, ownership and cancellation are fast and stable at the API (about 40 tests). Boundaries are separate tests, so a failure names the exact rule.
-- **UI-thin.** The UI covers what only the UI can break: live price and total, the confirmation panel, My Bookings, the cancel dialog and its two outcomes (about 12 tests).
-- **One e2e test** checks that a booking made in the UI is the same booking the API returns (reference, quantity, total, seats).
-- `@smoke` marks one fast test per acceptance criterion.
-- **Deliberately not covered:** field validation messages in the UI (not yet inspected), the Events list and search, admin pages, and cross-browser runs (Chromium only).
+| Group | Count | Covers |
+|---|---|---|
+| setup | 3 | API reachable, both users logged in, UI login saved |
+| `api/bookings.create` | 6 | confirmed booking and ref, total = price x quantity, fetch by id and by ref, listed |
+| `api/bookings.validation` | 14 | quantity 0/1/10/11/negative/fractional, name 1/2 chars, email, phone rules, unknown event, more than seats left |
+| `api/bookings.seats` | 4 | seats reduced, restored on cancel, exact remaining seats, sold out |
+| `api/bookings.cancel` | 5 | cancel, gone afterwards, cancel twice, unknown id |
+| `api/bookings.access` | 7 | 401 without token, other user gets 403/403/not listed/404 |
+| `api/docs-mismatch` | 3 | ref format, `totalPrice` type, string quantity (all `test.fail`) |
+| `ui/auth` | 2 | login form |
+| `ui/booking` | 12 | stepper limits, live total, field errors, confirmation, appears in My Bookings |
+| `ui/cancel` | 3 | dialog text, keep booking, confirm cancel (also after reload) |
+| `e2e/ui-api-consistency` | 2 | UI booking matches API; API booking shows in My Bookings |
+
+Tests are independent of each other; the only ordering is the `setup` project that the others depend on.
+
+**Deliberately not covered:** the Events list and search, admin pages, "Clear all bookings", cross-browser runs (Chromium only).
 
 ## 4. CI, configuration and secrets
 
 `.github/workflows/playwright.yml` runs on every push and pull request (and manually): checkout, Node 20 with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report and the traces/screenshots as artifacts (`if: !cancelled()`, so failed runs keep their evidence).
 
 - **Configuration:** everything comes from environment variables, read in one file (`src/config/env.ts`). Locally they come from a git-ignored `.env`; `.env.example` documents the names.
-- **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**. The code has sensible defaults.
-- **Sensitive values**, the credentials of the two test accounts (`EVENTHUB_EMAIL`, `EVENTHUB_PASSWORD`, `EVENTHUB_EMAIL_2`, `EVENTHUB_PASSWORD_2`), are repository **secrets** mapped to environment variables. Nothing is hardcoded and nothing is printed; tokens exist only in the git-ignored `.auth/` folder.
-- **The accounts are disposable** test accounts used nowhere else, because the target is a shared public environment.
+- **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**; the code has defaults.
+- **Sensitive values**, the credentials of the two test accounts (`EVENTHUB_EMAIL`, `EVENTHUB_PASSWORD`, `EVENTHUB_EMAIL_2`, `EVENTHUB_PASSWORD_2`), are repository **secrets** mapped to environment variables. Nothing is hardcoded or printed; tokens exist only in the git-ignored `.auth/` folder.
+- **The accounts are disposable** and used nowhere else, because the target is a shared public environment.
 - **Forked pull requests** do not receive secrets, so the suite cannot authenticate there. That is intended.
-- Retries: 1 in CI, 0 locally. Traces are captured on the first retry. Workers: 2 in CI, because the environment is shared.
+- Retries: 1 in CI, 0 locally. Traces on first retry. Workers: 2 in CI, because the environment is shared.
 
-## 5. Assumptions
+## 5. Assumptions (not all verified against the live site)
 
-- Login and registration are not part of US-114, so they are covered only as setup. Each account is registered automatically on first use (register is tried when login returns 400 or 404; if registering also fails, the setup reports that the password in `.env` is probably wrong).
-- The Swagger `POST /events` body was inferred from a live call (it worked); events are created with a future date and a price under 1000, so the UI never shows a thousands separator.
-- `GET /bookings` is assumed to return a recent user's bookings on the first page. I have not yet checked its paging parameters. This affects the cleanup lookup and the "appears in list" test only if a user accumulates many bookings.
-- The confirmation card has no ids, so its rows are found by label text and the value is the element next to it (one XPath in `BookingConfirmation`). The booking form's total uses the row markup captured from the page.
-- Event pages are opened directly by id (`/events/{id}`), which is the same id the API returns.
-- Cleanup assumes the API allows deleting events created by the same user.
+- Login and registration are not part of US-114, so they are covered only as setup. An account is registered automatically when login fails.
+- `GET /bookings` is paged. The cleanup reads pages until an empty page; this **assumes a page past the last one returns an empty 200**, not an error (the helper fails loudly on any non-200).
+- The first event card is bookable. The seeded events are shared and drain over time, so `bookableEvent` and the first card can run out; the fixture then fails with a clear message.
+- `GET /events` is not paged.
+- The "N seats left" text on an event card exists only while the event has fewer than 10 seats.
+- Validation errors in the booking form appear after clicking Confirm Booking.
+- The minus button label is the true minus sign (U+2212), as in the page markup.
+- Confirmation rows are found by their label text and the last `span` in the row, which assumes the labels are unique on the card.
+- Parallel runs share the same seeded events, so seat counts on them are only checked with tolerance-free logic where we own the booking (the `privateEvent` tests).
+- Cleanup assumes the API lets a user delete events they created.
 
 ## 6. What I would do with more time
 
-- Verify the confirmation-panel locators and add `data-testid` requests for the booking form.
-- Cover the Events list and search, UI field validation messages, and the full keyboard and accessibility path of the booking form and the dialog.
-- Add contract checks against the OpenAPI schema (and fix the doc gaps found here), and a second browser project.
-- Test concurrency properly (two users racing for the last seat) once the PO defines the expected result.
+- Run against the live site in CI for a few weeks and track flakiness; fix any locator that does not match the real DOM.
+- Ask for `data-testid` attributes on the booking form and the confirmation rows.
+- Cover the Events list and search, and the keyboard and accessibility path of the form and the dialog.
+- Contract checks against the OpenAPI schema, and a second browser project.
+- Concurrency tests (two users racing for the last seat) once the PO defines the expected result.
 - Inspect the 43 console errors on the confirmation page and fail tests on unexpected ones.
-- Publish the HTML report to GitHub Pages and add a flaky-test dashboard.
-- Move the two probe scripts into the repo as an `exploration/` folder, and retire the test accounts' leftover data with an admin cleanup job if the environment ever offers one.
+- Publish the HTML report to GitHub Pages.
+- Move the exploration probes into an `exploration/` folder.

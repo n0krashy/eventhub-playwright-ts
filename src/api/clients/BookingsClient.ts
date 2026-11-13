@@ -1,6 +1,9 @@
 import type { APIRequestContext } from '@playwright/test';
-import type { BookingListResponse, BookingResponse, MessageResponse } from '../models';
+import type { BookingData, BookingListResponse, BookingResponse } from '../models/booking';
+import type { MessageResponse } from '../models/common';
 import { toApiResponse } from '../response';
+
+const MAX_PAGES = 50;
 
 export class BookingsClient {
   constructor(private request: APIRequestContext) {}
@@ -11,9 +14,26 @@ export class BookingsClient {
     return toApiResponse<BookingResponse>(res);
   }
 
-  async list() {
-    const res = await this.request.get('bookings');
+  // One page of my bookings (the API returns 10 per page by default)
+  async list(page = 1) {
+    const res = await this.request.get('bookings', { params: { page } });
     return toApiResponse<BookingListResponse>(res);
+  }
+
+  // All of my bookings: asks for page after page until a page comes back empty
+  async listAll(): Promise<BookingData[]> {
+    const allBookings: BookingData[] = [];
+
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const res = await this.list(page);
+      if (res.status !== 200) {
+        throw new Error(`GET /bookings?page=${page} failed: HTTP ${res.status} ${JSON.stringify(res.body)}`);
+      }
+      if (res.body.data.length === 0) break;
+      allBookings.push(...res.body.data);
+    }
+
+    return allBookings;
   }
 
   async getById(id: number) {

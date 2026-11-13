@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
-import type { Credentials, LoginResponse } from '../models';
+import type { Credentials, LoginResponse } from '../models/auth';
 import { toApiResponse } from '../response';
 
 export class AuthClient {

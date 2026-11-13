@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import type { Credentials } from '../api/models';
+import type { Credentials } from '../api/models/auth';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -13,8 +13,8 @@ function requireEnv(name: string): string {
 
 export const env = {
   // "||" (not "??") so an empty value from CI falls back to the default too
-  baseUrl: (process.env.BASE_URL || 'https://eventhub.rahulshettyacademy.com'),
-  apiUrl: (process.env.API_URL || 'https://api.eventhub.rahulshettyacademy.com/api'),
+  baseUrl: (process.env.BASE_URL || 'https://eventhub.rahulshettyacademy.com').replace(/\/+$/, ''),
+  apiUrl: (process.env.API_URL || 'https://api.eventhub.rahulshettyacademy.com/api').replace(/\/+$/, ''),
 
   // where the web app keeps the login token in localStorage
   tokenStorageKey: 'eventhub_token',

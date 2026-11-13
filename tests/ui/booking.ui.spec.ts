@@ -1,103 +1,151 @@
 import { expect, test } from '../../src/fixtures';
-import { buildCustomer } from '../../src/data/builders';
-import { EventDetailsPage } from '../../src/ui/pages/EventDetailsPage';
-import { MyBookingsPage } from '../../src/ui/pages/MyBookingsPage';
+import { formatPrice, parsePrice } from '../../src/data/price';
+
+// These tests book through the website only. They use the first event in the list.
 
 test.describe('Event page - tickets and total price', () => {
-  test('one ticket is selected by default and the total is the ticket price', async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const eventPage = new EventDetailsPage(page);
-
-    await eventPage.goto(event.id);
-
-    await expect(eventPage.bookingForm.ticketCount).toHaveText('1');
-    await expect(eventPage.bookingForm.totalRow).toContainText('$250');
+  test.beforeEach(async ({ eventsPage }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
   });
 
-  test('total goes up when a ticket is added', async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
+  test('one ticket is selected by default and the total is the ticket price', async ({ eventDetailsPage }) => {
+    const form = eventDetailsPage.bookingForm;
+    const ticketPrice = await form.ticketPrice.innerText();
 
-    await eventPage.bookingForm.plusButton.click();
-
-    await expect(eventPage.bookingForm.ticketCount).toHaveText('2');
-    await expect(eventPage.bookingForm.totalRow).toContainText('$500');
+    await expect(form.ticketCount).toHaveText('1');
+    await expect(form.total).toHaveText(ticketPrice);
   });
 
-  test('total goes down when a ticket is removed', async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
-    await eventPage.bookingForm.selectTickets(3);
-    await expect(eventPage.bookingForm.totalRow).toContainText('$750');
+  test('total goes up when a ticket is added', async ({ eventDetailsPage }) => {
+    const form = eventDetailsPage.bookingForm;
+    const price = parsePrice(await form.ticketPrice.innerText());
 
-    await eventPage.bookingForm.minusButton.click();
+    await form.plusButton.click();
 
-    await expect(eventPage.bookingForm.ticketCount).toHaveText('2');
-    await expect(eventPage.bookingForm.totalRow).toContainText('$500');
+    await expect(form.ticketCount).toHaveText('2');
+    await expect(form.total).toHaveText(formatPrice(price * 2));
+  });
+
+  test('total goes down when a ticket is removed', async ({ eventDetailsPage }) => {
+    const form = eventDetailsPage.bookingForm;
+    const price = parsePrice(await form.ticketPrice.innerText());
+    await eventDetailsPage.selectTickets(3);
+    await expect(form.total).toHaveText(formatPrice(price * 3));
+
+    await form.minusButton.click();
+
+    await expect(form.ticketCount).toHaveText('2');
+    await expect(form.total).toHaveText(formatPrice(price * 2));
+  });
+});
+
+test.describe('Event page - ticket limits', () => {
+  test('the minus button is disabled at 1 ticket', async ({ eventsPage, eventDetailsPage }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
+
+    await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('1');
+    await expect(eventDetailsPage.bookingForm.minusButton).toBeDisabled();
+  });
+
+  test('the plus button is disabled at 10 tickets', async ({ eventsPage, eventDetailsPage }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
+
+    await eventDetailsPage.selectTickets(10);
+
+    await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('10');
+    await expect(eventDetailsPage.bookingForm.plusButton).toBeDisabled();
+  });
+
+  test('the plus button stops at the number of seats left', async ({ eventsPage, eventDetailsPage }) => {
+    await eventsPage.goto();
+    const seatsLeft = await eventsPage.seatsLeftOnAlmostSoldOutEvent();
+    await eventsPage.openAlmostSoldOutEvent();
+
+    await eventDetailsPage.selectTickets(seatsLeft);
+
+    await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText(String(seatsLeft));
+    await expect(eventDetailsPage.bookingForm.plusButton).toBeDisabled();
+  });
+});
+
+test.describe('Event page - form validation', () => {
+  test.beforeEach(async ({ eventsPage }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
+  });
+
+  test('shows an error for a name shorter than 2 characters', async ({ eventDetailsPage, customer }) => {
+    await eventDetailsPage.fillCustomerDetails({ ...customer, name: 'A' });
+
+    await eventDetailsPage.confirm();
+
+    await expect(eventDetailsPage.bookingForm.nameError).toBeVisible();
+    await expect(eventDetailsPage.confirmation.heading).toBeHidden();
+  });
+
+  test('shows an error for an invalid email', async ({ eventDetailsPage, customer }) => {
+    await eventDetailsPage.fillCustomerDetails({ ...customer, email: 'not-an-email' });
+
+    await eventDetailsPage.confirm();
+
+    await expect(eventDetailsPage.bookingForm.emailError).toBeVisible();
+    await expect(eventDetailsPage.confirmation.heading).toBeHidden();
+  });
+
+  test('shows an error for a phone number that is too short', async ({ eventDetailsPage, customer }) => {
+    await eventDetailsPage.fillCustomerDetails({ ...customer, phone: '123' });
+
+    await eventDetailsPage.confirm();
+
+    await expect(eventDetailsPage.bookingForm.phoneError).toBeVisible();
+    await expect(eventDetailsPage.confirmation.heading).toBeHidden();
   });
 });
 
 test.describe('Event page - confirm a booking', () => {
-  test('shows a confirmation with a booking reference', { tag: '@smoke' }, async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const customer = buildCustomer();
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
-    await eventPage.bookingForm.selectTickets(2);
-    await eventPage.bookingForm.fillCustomerDetails(customer);
-
-    await eventPage.bookingForm.confirm();
-
-    await expect(eventPage.confirmation.heading).toBeVisible();
-    await expect(eventPage.confirmation.bookingRef).not.toBeEmpty();
-    await expect(eventPage.confirmation.valueNextTo('Customer')).toHaveText(customer.name);
-    await expect(eventPage.confirmation.valueNextTo('Tickets')).toHaveText('2');
+  test.beforeEach(async ({ eventsPage }) => {
+    await eventsPage.goto();
+    await eventsPage.openFirstEvent();
   });
 
-  test('the confirmation total is the ticket price multiplied by the tickets', async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
-    await eventPage.bookingForm.selectTickets(3);
-    await eventPage.bookingForm.fillCustomerDetails(buildCustomer());
+  test('shows a confirmation with a booking reference', { tag: '@smoke' }, async ({ eventDetailsPage, customer }) => {
+    await eventDetailsPage.bookTickets(2, customer);
 
-    await eventPage.bookingForm.confirm();
+    const confirmation = eventDetailsPage.confirmation;
+    await expect(confirmation.heading).toBeVisible();
+    await expect(confirmation.bookingRef).not.toBeEmpty();
+    await expect(confirmation.customer).toHaveText(customer.name);
+    await expect(confirmation.tickets).toHaveText('2');
+  });
 
-    await expect(eventPage.confirmation.valueNextTo('Total')).toHaveText('$750');
+  test('the confirmation total is the ticket price multiplied by the tickets', async ({ eventDetailsPage, customer }) => {
+    const price = parsePrice(await eventDetailsPage.bookingForm.ticketPrice.innerText());
+
+    await eventDetailsPage.bookTickets(3, customer);
+
+    await expect(eventDetailsPage.confirmation.total).toHaveText(formatPrice(price * 3));
   });
 });
 
 test.describe('My Bookings', () => {
-  test('a new booking appears in My Bookings', { tag: '@smoke' }, async ({ page, testData }) => {
-    const event = await testData.createEvent({ price: 250 });
-    const eventPage = new EventDetailsPage(page);
-    await eventPage.goto(event.id);
-    await eventPage.bookingForm.selectTickets(2);
-    await eventPage.bookingForm.fillCustomerDetails(buildCustomer());
-    await eventPage.bookingForm.confirm();
-    await expect(eventPage.confirmation.heading).toBeVisible();
-    const bookingRef = await eventPage.confirmation.bookingRef.innerText();
+  test('a new booking appears in My Bookings', { tag: '@smoke' }, async ({ page, eventsPage, eventDetailsPage, myBookingsPage, customer }) => {
+    await eventsPage.goto();
+    const eventTitle = await eventsPage.firstEventTitle();
+    await eventsPage.openFirstEvent();
+    const price = parsePrice(await eventDetailsPage.bookingForm.ticketPrice.innerText());
+    await eventDetailsPage.bookTickets(2, customer);
+    const bookingRef = await eventDetailsPage.confirmation.bookingRef.innerText();
 
-    await eventPage.confirmation.viewMyBookingsButton.click();
+    await eventDetailsPage.confirmation.viewMyBookingsButton.click();
 
-    const myBookings = new MyBookingsPage(page);
     await expect(page).toHaveURL('/bookings');
-    await expect(myBookings.card(bookingRef)).toBeVisible();
-    await expect(myBookings.card(bookingRef)).toContainText(event.title);
-    await expect(myBookings.card(bookingRef)).toContainText('$500');
-    await expect(myBookings.card(bookingRef)).toContainText('2 tickets');
-  });
-
-  test('a booking made through the API is listed in My Bookings', async ({ page, testData }) => {
-    const event = await testData.createEvent();
-    const booking = await testData.createBooking(event);
-    const myBookings = new MyBookingsPage(page);
-
-    await myBookings.goto();
-
-    await expect(myBookings.card(booking.bookingRef)).toBeVisible();
-    await expect(myBookings.bookingId(booking.bookingRef)).toHaveText(`#${booking.id}`);
+    const card = myBookingsPage.card(bookingRef);
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(eventTitle);
+    await expect(card).toContainText('2 tickets');
+    await expect(card).toContainText(formatPrice(price * 2));
   });
 });

@@ -22,11 +22,11 @@ export default defineConfig({
   },
   projects: [
     // Health check, API sessions for both users, and one real UI login saved as browser state.
-    { name: 'setup', testMatch: 'global.setup.ts' },
-    { name: 'api', testMatch: 'api/**/*.spec.ts', dependencies: ['setup'] },
+    { name: 'setup', testMatch: '**/global.setup.ts' },
+    { name: 'api', testMatch: '**/api/**/*.spec.ts', dependencies: ['setup'] },
     {
       name: 'ui',
-      testMatch: '{ui,e2e}/**/*.spec.ts',
+      testMatch: '**/{ui,e2e}/**/*.spec.ts',
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE_PATH },
     },
