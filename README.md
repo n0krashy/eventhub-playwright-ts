@@ -86,9 +86,9 @@ src/
     builders.ts              unique customer, booking and event inputs
     price.ts                 "$1,500" <-> 1500
   fixtures/
-    apiFixtures.ts           firstUser, secondUser, noUser (and the worker-scoped sessions fixture)
+    apiFixtures.ts           firstUser, secondUser, noUser (worker-scoped; the only readers of the saved tokens)
     dataFixtures.ts          customer, bookableEvent, privateEvent, fiveSeatEvent
-    pageFixtures.ts          loginPage, eventsPage, eventDetailsPage, myBookingsPage
+    pageFixtures.ts          eventsPage, eventDetailsPage, myBookingsPage
     index.ts                 merges the three above via mergeTests; every spec imports from here
     bookingHelpers.ts        createBooking, cancelBookingsOf (cleanup)
   ui/pages/                  LoginPage, EventsPage, EventDetailsPage, MyBookingsPage
@@ -112,7 +112,7 @@ tests/
 - **Plain code over clever code.** Locators prefer ids, test ids, and button and heading names; where the app offers none, they use the visible text (error messages, row labels) or the `.booking-ref` class. `exact: true` only where one label sits inside another. The only regex in a test is the documented `EVT-` format check.
 - **Known issues are executable.** `docs-mismatch.api.spec.ts` asserts what the docs promise and is marked `test.fail`, so CI stays green while the mismatch exists and goes red when it is fixed, which is the cue to promote the test.
 
-**The 63 tests**
+**The 62 tests**
 
 | Group | Count | Covers |
 |---|---|---|
@@ -123,7 +123,7 @@ tests/
 | `api/bookings.cancel` | 5 | cancel, gone afterwards, cancel twice, unknown id |
 | `api/bookings.access` | 7 | 401 without token, other user gets 403/403/not listed/404 |
 | `api/docs-mismatch` | 3 | ref format, `totalPrice` type, string quantity (all `test.fail`) |
-| `ui/auth` | 2 | login form |
+| `ui/auth` | 1 | saved login state keeps the user logged in (the form itself is used by setup) |
 | `ui/booking` | 14 | stepper limits (10 tickets, seats left), live total, field errors (including empty form), confirmation, seats left drop on the card, appears in My Bookings |
 | `ui/cancel` | 3 | dialog text, keep booking, confirm cancel (also after reload) |
 | `e2e/ui-api-consistency` | 2 | UI booking matches API; API booking shows in My Bookings |
