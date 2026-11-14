@@ -12,14 +12,14 @@ test.describe('My Bookings - cancel a booking', () => {
     await myBookingsPage.goto();
   });
 
-  test('asks for confirmation and names the booking and the seats released', async ({ myBookingsPage }) => {
+  test('asks for confirmation and names the booking and the seats released', { tag: '@positive' }, async ({ myBookingsPage }) => {
     await myBookingsPage.clickCancelBooking(bookingRef);
 
     await expect(myBookingsPage.cancelDialog.message).toContainText(bookingRef);
     await expect(myBookingsPage.cancelDialog.message).toContainText('release 2 seat(s)');
   });
 
-  test('closing the dialog keeps the booking', async ({ myBookingsPage }) => {
+  test('closing the dialog keeps the booking', { tag: '@positive' }, async ({ myBookingsPage }) => {
     await myBookingsPage.clickCancelBooking(bookingRef);
 
     await myBookingsPage.cancelDialog.noButton.click();
@@ -28,7 +28,7 @@ test.describe('My Bookings - cancel a booking', () => {
     await expect(myBookingsPage.card(bookingRef)).toBeVisible();
   });
 
-  test('confirming removes the booking from My Bookings', { tag: '@smoke' }, async ({ myBookingsPage }) => {
+  test('confirming removes the booking from My Bookings', { tag: ['@smoke', '@positive'] }, async ({ myBookingsPage }) => {
     await myBookingsPage.clickCancelBooking(bookingRef);
 
     await myBookingsPage.cancelDialog.yesButton.click();

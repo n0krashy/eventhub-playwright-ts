@@ -9,7 +9,7 @@ test.describe('Event page - tickets and total price', () => {
     await eventsPage.openFirstEvent();
   });
 
-  test('one ticket is selected by default and the total is the ticket price', async ({ eventDetailsPage }) => {
+  test('one ticket is selected by default and the total is the ticket price', { tag: '@positive' }, async ({ eventDetailsPage }) => {
     const form = eventDetailsPage.bookingForm;
     const ticketPrice = await form.ticketPrice.innerText();
 
@@ -17,7 +17,7 @@ test.describe('Event page - tickets and total price', () => {
     await expect(form.total).toHaveText(ticketPrice);
   });
 
-  test('total goes up when a ticket is added', async ({ eventDetailsPage }) => {
+  test('total goes up when a ticket is added', { tag: '@positive' }, async ({ eventDetailsPage }) => {
     const form = eventDetailsPage.bookingForm;
     const price = parsePrice(await form.ticketPrice.innerText());
 
@@ -27,7 +27,7 @@ test.describe('Event page - tickets and total price', () => {
     await expect(form.total).toHaveText(formatPrice(price * 2));
   });
 
-  test('total goes down when a ticket is removed', async ({ eventDetailsPage }) => {
+  test('total goes down when a ticket is removed', { tag: '@positive' }, async ({ eventDetailsPage }) => {
     const form = eventDetailsPage.bookingForm;
     const price = parsePrice(await form.ticketPrice.innerText());
     await eventDetailsPage.selectTickets(3);
@@ -46,12 +46,12 @@ test.describe('Event page - ticket limits', () => {
     await eventsPage.openFirstEvent();
   });
 
-  test('the minus button is disabled at 1 ticket', async ({ eventDetailsPage }) => {
+  test('the minus button is disabled at 1 ticket', { tag: '@negative' }, async ({ eventDetailsPage }) => {
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('1');
     await expect(eventDetailsPage.bookingForm.minusButton).toBeDisabled();
   });
 
-  test('the plus button is disabled at 10 tickets', async ({ eventDetailsPage }) => {
+  test('the plus button is disabled at 10 tickets', { tag: '@negative' }, async ({ eventDetailsPage }) => {
     await eventDetailsPage.selectTickets(10);
 
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('10');
@@ -62,7 +62,7 @@ test.describe('Event page - ticket limits', () => {
 // These tests use an event created for the test (through the API), because the seats
 // of the shared events change while the tests run. The booking itself is still done on the website.
 test.describe('Event page - seats on an event created for the test', () => {
-  test('the plus button stops at the number of seats left', async ({ eventsPage, eventDetailsPage, fiveSeatEvent }) => {
+  test('the plus button stops at the number of seats left', { tag: '@negative' }, async ({ eventsPage, eventDetailsPage, fiveSeatEvent }) => {
     await eventsPage.goto();
     await eventsPage.openEvent(fiveSeatEvent.title);
 
@@ -72,7 +72,7 @@ test.describe('Event page - seats on an event created for the test', () => {
     await expect(eventDetailsPage.bookingForm.plusButton).toBeDisabled();
   });
 
-  test('booking tickets lowers the seats left on the event card', async ({ eventsPage, eventDetailsPage, privateEvent, customer }) => {
+  test('booking tickets lowers the seats left on the event card', { tag: '@positive' }, async ({ eventsPage, eventDetailsPage, privateEvent, customer }) => {
     await eventsPage.goto();
     await expect(eventsPage.eventCard(privateEvent.title)).toContainText('10 seats left');
     await eventsPage.openEvent(privateEvent.title);
@@ -91,7 +91,7 @@ test.describe('Event page - form validation', () => {
     await eventsPage.openFirstEvent();
   });
 
-  test('shows an error for a name shorter than 2 characters', async ({ eventDetailsPage, customer }) => {
+  test('shows an error for a name shorter than 2 characters', { tag: '@negative' }, async ({ eventDetailsPage, customer }) => {
     await eventDetailsPage.fillCustomerDetails({ ...customer, name: 'A' });
 
     await eventDetailsPage.confirm();
@@ -100,7 +100,7 @@ test.describe('Event page - form validation', () => {
     await expect(eventDetailsPage.confirmation.heading).toBeHidden();
   });
 
-  test('shows an error for an invalid email', async ({ eventDetailsPage, customer }) => {
+  test('shows an error for an invalid email', { tag: '@negative' }, async ({ eventDetailsPage, customer }) => {
     await eventDetailsPage.fillCustomerDetails({ ...customer, email: 'not-an-email' });
 
     await eventDetailsPage.confirm();
@@ -109,7 +109,7 @@ test.describe('Event page - form validation', () => {
     await expect(eventDetailsPage.confirmation.heading).toBeHidden();
   });
 
-  test('shows an error for a phone number that is too short', async ({ eventDetailsPage, customer }) => {
+  test('shows an error for a phone number that is too short', { tag: '@negative' }, async ({ eventDetailsPage, customer }) => {
     await eventDetailsPage.fillCustomerDetails({ ...customer, phone: '123' });
 
     await eventDetailsPage.confirm();
@@ -120,7 +120,7 @@ test.describe('Event page - form validation', () => {
 
   // Blank fields hit the same validation as invalid ones (same error text), so this
   // only needs to check all three errors together, not one test per empty field.
-  test('shows an error for every field when the form is submitted empty', async ({ eventDetailsPage }) => {
+  test('shows an error for every field when the form is submitted empty', { tag: '@negative' }, async ({ eventDetailsPage }) => {
     await eventDetailsPage.confirm();
 
     await expect(eventDetailsPage.bookingForm.nameError).toBeVisible();
@@ -136,7 +136,7 @@ test.describe('Event page - confirm a booking', () => {
     await eventsPage.openFirstEvent();
   });
 
-  test('shows a confirmation with a booking reference', { tag: '@smoke' }, async ({ eventDetailsPage, customer }) => {
+  test('shows a confirmation with a booking reference', { tag: ['@smoke', '@positive'] }, async ({ eventDetailsPage, customer }) => {
     await eventDetailsPage.bookTickets(2, customer);
 
     const confirmation = eventDetailsPage.confirmation;
@@ -146,7 +146,7 @@ test.describe('Event page - confirm a booking', () => {
     await expect(confirmation.tickets).toHaveText('2');
   });
 
-  test('the confirmation total is the ticket price multiplied by the tickets', async ({ eventDetailsPage, customer }) => {
+  test('the confirmation total is the ticket price multiplied by the tickets', { tag: '@positive' }, async ({ eventDetailsPage, customer }) => {
     const price = parsePrice(await eventDetailsPage.bookingForm.ticketPrice.innerText());
 
     await eventDetailsPage.bookTickets(3, customer);
@@ -156,7 +156,7 @@ test.describe('Event page - confirm a booking', () => {
 });
 
 test.describe('My Bookings', () => {
-  test('a new booking appears in My Bookings', { tag: '@smoke' }, async ({ page, eventsPage, eventDetailsPage, myBookingsPage, customer }) => {
+  test('a new booking appears in My Bookings', { tag: ['@smoke', '@positive'] }, async ({ page, eventsPage, eventDetailsPage, myBookingsPage, customer }) => {
     await eventsPage.goto();
     const eventTitle = await eventsPage.firstEventTitle();
     await eventsPage.openFirstEvent();

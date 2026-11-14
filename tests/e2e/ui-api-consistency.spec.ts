@@ -3,7 +3,7 @@ import { parsePrice } from '../../src/data/price';
 import { createBooking } from '../../src/fixtures/bookingHelpers';
 
 test.describe('The website and the API show the same bookings', () => {
-  test('a booking made on the website is the same booking in the API', { tag: '@smoke' }, async ({ firstUser, eventsPage, eventDetailsPage, customer }) => {
+  test('a booking made on the website is the same booking in the API', { tag: ['@smoke', '@positive'] }, async ({ firstUser, eventsPage, eventDetailsPage, customer }) => {
     await eventsPage.goto();
     await eventsPage.openFirstEvent();
     const price = parsePrice(await eventDetailsPage.bookingForm.ticketPrice.innerText());
@@ -22,7 +22,7 @@ test.describe('The website and the API show the same bookings', () => {
     expect(booking.status).toBe('confirmed');
   });
 
-  test('a booking made through the API is listed in My Bookings', async ({ firstUser, bookableEvent, myBookingsPage, customer }) => {
+  test('a booking made through the API is listed in My Bookings', { tag: '@positive' }, async ({ firstUser, bookableEvent, myBookingsPage, customer }) => {
     const booking = await createBooking(firstUser, bookableEvent.id, customer);
 
     await myBookingsPage.goto();

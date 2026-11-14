@@ -18,6 +18,8 @@ npm test                    # everything
 npm run test:api            # API project only
 npm run test:ui             # UI + e2e project only
 npm run test:smoke          # tests tagged @smoke
+npm run test:positive       # tests tagged @positive
+npm run test:negative       # tests tagged @negative
 npm run report              # open the HTML report
 ```
 
@@ -69,7 +71,7 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 3. **Past events:** should they be bookable? If not, where is that enforced, and what should the user see?
 4. **Booking reference:** what is the official format, and is it emailed? The docs say `EVT-`, the system says `D-`.
 5. **Price:** which currency, and are taxes or fees ever added? Should `totalPrice` be a number or a string in the API?
-6. **Limits:** is the 10-ticket cap per booking, or per user per event? Can a user book the same event twice?
+6. **Ticket limit:** the story sets no limit, but Swagger and the app allow at most 10 tickets per booking (see 2.1 row 4). Is 10 the intended limit? Today one user can make several bookings for the same event, so the limit only applies to a single booking. Is that intended, or should it be per user per event?
 7. **Access control:** what should user B get when asking for user A's booking, 403 or 404? Should the docs list it?
 8. **My Bookings:** default ordering, paging, and should it show cancelled bookings?
 9. **Customer details:** must the booking email match the account? What are the real phone and name rules (the API accepts a numeric name)?
@@ -145,6 +147,7 @@ Tests are independent of each other; the only ordering is the `setup` project th
 - **Two e2e tests connect the two layers:** a booking made in the UI matches what the API returns, and a booking made through the API shows up in the UI.
 - **Known bugs are kept as tests** (`docs-mismatch`), so they are tracked in the suite instead of being forgotten.
 - **Eight tests are tagged `@smoke`:** the main path of each acceptance criterion, in the UI, through the API and one e2e test. They are a quick check after a deploy (`npm run test:smoke`).
+- **Tests are tagged `@positive` (29) or `@negative` (27).** Positive tests check that a valid action works: booking, totals, listing, cancelling, and valid edge values such as 1 or 10 tickets. Negative tests check that the app refuses something it should: invalid input, too many tickets, a sold-out event, a missing token or another user's booking. The 3 `docs-mismatch` tests are tagged `@known-issue` instead. Run one group with `npm run test:positive` or `npm run test:negative`.
 
 ### 3.4 How to add to the framework
 
