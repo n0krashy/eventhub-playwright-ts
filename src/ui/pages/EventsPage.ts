@@ -20,17 +20,13 @@ export class EventsPage {
     return this.eventCards.first().getByRole('heading').innerText();
   }
 
-  // Events with fewer than 10 seats show a warning such as "8 seats left!" instead of "157 seats available"
-  private almostSoldOutCard(): Locator {
-    return this.eventCards.filter({ hasText: 'seats left' }).first();
+  // One event card, found by the event's exact title.
+  // The card shows "8 seats left!" when 10 or fewer seats are left, otherwise "157 seats available".
+  eventCard(title: string): Locator {
+    return this.eventCards.filter({ has: this.page.getByRole('heading', { name: title, exact: true }) });
   }
 
-  async seatsLeftOnAlmostSoldOutEvent(): Promise<number> {
-    const warning = await this.almostSoldOutCard().getByText('seats left').innerText(); // "8 seats left!"
-    return Number(warning.split(' ')[0]);
-  }
-
-  async openAlmostSoldOutEvent(): Promise<void> {
-    await this.almostSoldOutCard().getByTestId('book-now-btn').click();
+  async openEvent(title: string): Promise<void> {
+    await this.eventCard(title).getByTestId('book-now-btn').click();
   }
 }

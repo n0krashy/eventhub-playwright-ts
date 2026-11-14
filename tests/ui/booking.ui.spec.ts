@@ -60,15 +60,31 @@ test.describe('Event page - ticket limits', () => {
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('10');
     await expect(eventDetailsPage.bookingForm.plusButton).toBeDisabled();
   });
+});
 
-  test('the plus button stops at the number of seats left', async ({ eventsPage, eventDetailsPage }) => {
-    const seatsLeft = await eventsPage.seatsLeftOnAlmostSoldOutEvent();
-    await eventsPage.openAlmostSoldOutEvent();
+// These tests use an event created for the test (through the API), because the seats
+// of the shared events change while the tests run. The booking itself is still done on the website.
+test.describe('Event page - seats on an event created for the test', () => {
+  test('the plus button stops at the number of seats left', async ({ eventsPage, eventDetailsPage, fiveSeatEvent }) => {
+    await eventsPage.goto();
+    await eventsPage.openEvent(fiveSeatEvent.title);
 
-    await eventDetailsPage.selectTickets(seatsLeft);
+    await eventDetailsPage.selectTickets(5);
 
-    await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText(String(seatsLeft));
+    await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('5');
     await expect(eventDetailsPage.bookingForm.plusButton).toBeDisabled();
+  });
+
+  test('booking tickets lowers the seats left on the event card', async ({ eventsPage, eventDetailsPage, privateEvent, customer }) => {
+    await eventsPage.goto();
+    await expect(eventsPage.eventCard(privateEvent.title)).toContainText('10 seats left');
+    await eventsPage.openEvent(privateEvent.title);
+
+    await eventDetailsPage.bookTickets(2, customer);
+    await expect(eventDetailsPage.confirmation.heading).toBeVisible();
+
+    await eventsPage.goto();
+    await expect(eventsPage.eventCard(privateEvent.title)).toContainText('8 seats left');
   });
 });
 

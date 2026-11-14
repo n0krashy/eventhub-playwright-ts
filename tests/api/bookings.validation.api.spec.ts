@@ -111,7 +111,7 @@ test.describe('POST /bookings - customer details', () => {
   });
 });
 
-test.describe('POST /bookings - event and seats', () => {
+test.describe('POST /bookings - event', () => {
   test('returns 404 for an event that does not exist', async ({ firstUser, customer }) => {
     const input = buildBookingInput(EVENT_THAT_DOES_NOT_EXIST, customer);
 
@@ -119,16 +119,5 @@ test.describe('POST /bookings - event and seats', () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error).toContain('not found');
-  });
-
-  // Asks for one more ticket than the event has left. The booking is rejected, so no seats are used.
-  test('rejects more tickets than there are seats left', async ({ firstUser, almostSoldOutEvent, customer }) => {
-    const seatsLeft = almostSoldOutEvent.availableSeats;
-    const input = buildBookingInput(almostSoldOutEvent.id, customer, { quantity: seatsLeft + 1 });
-
-    const res = await firstUser.bookings.create(input);
-
-    expect(res.status).toBe(400);
-    expect(res.body.error).toContain(`Only ${seatsLeft} seat`);
   });
 });

@@ -2,10 +2,20 @@ import { expect, test } from '../../src/fixtures';
 import { buildBookingInput } from '../../src/data/builders';
 import { createBooking } from '../../src/fixtures/bookingHelpers';
 
-// These are the only tests that use an event of their own (the `privateEvent` fixture, 10 seats).
+// These tests use an event of their own (the `privateEvent` fixture with 10 seats, or `fiveSeatEvent`).
 // Exact seat counts cannot be checked on the shared events, because other people book them at the same time.
 // Booking every seat of a shared event would also break the other tests.
 test.describe('Seats - checked on an event created for the test', () => {
+  // 6 tickets is within the 10-ticket limit, so only the 5 seats left can make the API refuse it
+  test('rejects more tickets than there are seats left', async ({ firstUser, fiveSeatEvent, customer }) => {
+    const input = buildBookingInput(fiveSeatEvent.id, customer, { quantity: 6 });
+
+    const res = await firstUser.bookings.create(input);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Only 5 seat');
+  });
+
   test('booking reduces the available seats by the quantity booked', async ({ firstUser, privateEvent, customer }) => {
     await createBooking(firstUser, privateEvent.id, customer, { quantity: 4 });
 
