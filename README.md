@@ -39,6 +39,7 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 | 8 | **AC4 says "cancel", the system hard-deletes.** After cancelling, the booking is gone (`GET` returns 404), so the `cancelled` status listed in the docs never appears, and there is no history or refund notion. The story also omits that seats are returned and that a confirmation dialog appears. | Live |
 | 9 | **Capacity and dates are not covered:** sold-out behaviour, simultaneous bookings for the last seat, and bookings for events in the past. | Live (see 2.2) |
 | 10 | **The story says nothing about how booking-form validation should present:** one error summary or one error per field, and whether leaving a field empty should behave like an invalid value or like a separate "required" state. Live, an empty field shows the exact same per-field error text as an invalid one, and all three show together when the whole form is left blank, but AC1/AC2 never say that is the intended behaviour. | Live: `tests/ui/booking.ui.spec.ts` ("form validation" describe block) |
+| 11 | **Who may delete an event is not stated** in the story or the docs. It matters for testing: the exact seat-count tests create their own event and must remove it afterwards, because the environment is shared. Live, a user can delete an event they created: `DELETE /events/{id}` returns 200 and the event is then gone (404). The cleanup relies on this; if a delete ever fails, it logs a warning and the event is left behind. | Live: create, delete, then `GET` returns 404 |
 
 ### 2.2 Where the application does not match the story or the docs
 
@@ -171,8 +172,6 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 - Login and registration are not part of US-114, so they are covered only as setup. An account is registered automatically when login fails.
 - The first event card is bookable. The seeded events are shared and drain over time (event 285 had 35 of 10,000 seats left). `bookableEvent` fails with a clear message when no event has 10 seats left; the UI tests have no such check and would fail on the booking itself.
-- Confirmation rows are found by their label text and the last `span` in the row, which assumes the labels are unique on the card.
-- Cleanup assumes the API lets a user delete events they created.
 
 ## 6. What I would do with more time
 
