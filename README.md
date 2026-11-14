@@ -108,6 +108,7 @@ tests/
 
 - **Playwright for both UI and API (TypeScript only).** One language, one runner, one report; UI and API tests share auth, config and fixtures. A second stack would double the tooling for a team growing this suite.
 - **Authorization lives in the framework, never in tests.** `global.setup.ts` authenticates once per run. Fixtures give each test an authorised API client (`firstUser`), a second user (`secondUser`) and an anonymous one (`noUser`). UI tests start from a saved browser state obtained through one real UI login.
+- **Login and registration are setup, not tests.** They are not part of US-114. If logging in with the credentials from `.env` does not return 200, setup treats the account as not existing yet and creates it through `POST /auth/register` with the same credentials. Any two new email/password pairs are therefore enough to run the suite. If registering fails too (for example a wrong password for an existing account, since the login error is the same for both, see 2.2 row L), setup stops with a message naming the account.
 - **Existing events first, own events only where seats are counted.** The story is about booking, not about managing events, so most tests use the seeded events: `bookableEvent` is the first event with at least 10 seats, and the UI tests book the first card on Events.
 - **The exception: tests that check exact seat numbers.** Other people book the seeded events at the same time, so their seat counts can change in the middle of a test. Seven tests therefore create their own event through the API and delete it afterwards: the five in `bookings.seats.api.spec.ts`, and two UI tests (the plus button stops at the seats left; the card's "seats left" drops after a booking). `privateEvent` has 10 seats; `fiveSeatEvent` has 5, fewer than the 10-ticket limit, so the seats left are what stops a bigger booking.
 - **Events are created through the API, even for the UI tests.** Any user can create events in the UI ("Add New Event"), but creating events is not part of US-114: a broken event form should not fail a booking test, and the API is faster and more stable for setup. The booking itself is always done through the website.
@@ -170,7 +171,6 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 ## 5. Assumptions
 
-- Login and registration are not part of US-114, so they are covered only as setup. An account is registered automatically when login fails.
 - The first event card is bookable. The seeded events are shared and drain over time (event 285 had 35 of 10,000 seats left). `bookableEvent` fails with a clear message when no event has 10 seats left; the UI tests have no such check and would fail on the booking itself.
 
 ## 6. What I would do with more time
