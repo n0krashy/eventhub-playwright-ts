@@ -1,5 +1,9 @@
 # EventHub QA: US-114 "Book tickets for an event"
 
+[![Playwright Tests](https://github.com/n0krashy/eventhub-playwright-ts/actions/workflows/playwright.yml/badge.svg)](https://github.com/n0krashy/eventhub-playwright-ts/actions/workflows/playwright.yml)
+
+**Latest test report (main branch):** https://n0krashy.github.io/eventhub-playwright-ts/
+
 Playwright + TypeScript framework covering the booking flow through the **UI and the REST API**, with a GitHub Actions pipeline.
 
 > Built with AI assistance (as the brief allows). I explored the live API and UI myself and I can walk through every file.
@@ -130,13 +134,31 @@ tests/
 
 Tests are independent of each other; the only ordering is the `setup` project that the others depend on.
 
+**Why these tests, and why this many**
+
+- **Every acceptance criterion is checked through the UI and through the API.** AC1-AC4 are what a user sees, so each has at least one UI test. AC5 says "the same works through the API", so AC1-AC4 are repeated through the API.
+- **Most of the tests are API tests (39 of 59, not counting setup).** Rules such as quantity limits, field validation, seat counts and access control are enforced by the server. Checking them through the API is fast and stable, and it gives a clear failure message. Each one is an edge case of the same request, so it is cheap to add.
+- **The UI tests check what only the UI can show:** the plus/minus stepper limits, the total updating live, the per-field error messages, the confirmation card, My Bookings and the cancel dialog. The UI tests do not repeat every validation rule. They check that an error is shown for each field, and the API tests check the exact rules.
+- **Risk decided the edge cases.** The cases with the highest risk got the most tests: money (total = price x quantity), overbooking (seats left, sold out), cancelling (seats are returned and the booking is gone) and privacy (another user cannot read or cancel my booking).
+- **Two e2e tests connect the two layers:** a booking made in the UI matches what the API returns, and a booking made through the API shows up in the UI.
+- **Known bugs are kept as tests** (`docs-mismatch`), so they are tracked in the suite instead of being forgotten.
+- **Eight tests are tagged `@smoke`:** the main path of each acceptance criterion, in the UI, through the API and one e2e test. They are a quick check after a deploy (`npm run test:smoke`).
+
+**How to add to the framework**
+
+- **A new API endpoint:** add the types to `src/api/models/<resource>.ts`, add a client in `src/api/clients/` (one method per endpoint, it returns `toApiResponse(...)`, no assertions) and register it in `createApiClients` (`src/api/clients/index.ts`). Every user fixture (`firstUser`, `secondUser`, `noUser`) then has it, already authorised.
+- **A new page:** add a class in `src/ui/pages/` (locators and actions only) and a fixture for it in `src/fixtures/pageFixtures.ts`.
+- **New test data:** add a builder in `src/data/builders.ts`. If the data needs cleanup, add a fixture in `src/fixtures/dataFixtures.ts` that removes it after `use(...)`, so a test can never forget to clean up.
+- **A new spec:** put it in `tests/api`, `tests/ui` or `tests/e2e`. The Playwright projects pick it up by folder. Import `test` and `expect` from `src/fixtures`, never from `@playwright/test`.
+- **A new environment:** set `BASE_URL` / `API_URL`. No code changes are needed.
+
 **Deliberately not covered:** admin pages, "Clear all bookings", cross-browser runs (Chromium only).
 
 ## 4. CI, configuration and secrets
 
 `.github/workflows/playwright.yml` runs on every push to any branch, and manually: checkout, Node LTS with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report as an artifact (`if: !cancelled()`, so failed runs keep their evidence). The report has screenshots of failed tests and traces of retried tests.
 
-- **Published report:** on `main`, a second job deploys the HTML report to GitHub Pages, also when tests fail. The site is public, so the trace files are removed from that copy first: traces record typed values and request headers (the test password and Bearer token). The full report with traces stays in the run's artifact. Pages must be set to *Settings → Pages → Source: GitHub Actions*.
+- **Published report:** https://n0krashy.github.io/eventhub-playwright-ts/ (latest `main` run). On `main`, a second job deploys the HTML report to GitHub Pages, also when tests fail. The site is public, so the trace files are removed from that copy first: traces record typed values and request headers (the test password and Bearer token). The full report with traces stays in the run's artifact. Pages must be set to *Settings → Pages → Source: GitHub Actions*.
 
 - **Configuration:** everything comes from environment variables, read in one file (`src/config/env.ts`). Locally they come from a git-ignored `.env`; `.env.example` documents the names.
 - **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**; the code has defaults.
@@ -154,7 +176,7 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 ## 6. What I would do with more time
 
-- Run against the live site in CI for a few weeks and track flakiness; fix any locator that does not match the real DOM.
+- Run on a nightly schedule as well as on push, and track flaky tests over a few weeks. The whole suite already passes against the live site in CI; the shared seed data (seats drained by other users) is the most likely cause of future flakiness.
 - Ask for `data-testid` attributes on the booking form and the confirmation rows.
 - Contract checks against the OpenAPI schema.
 - Run the UI tests on WebKit as well (Safari and every iOS browser use it), then Firefox.
