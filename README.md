@@ -104,7 +104,7 @@ tests/
   api/  ui/  e2e/            specs (every test is an explicit `test(...)`, no loops generating tests)
 ```
 
-**Decisions and why**
+### 3.1 Decisions and why
 
 - **Playwright for both UI and API (TypeScript only).** One language, one runner, one report; UI and API tests share auth, config and fixtures. A second stack would double the tooling for a team growing this suite.
 - **Authorization lives in the framework, never in tests.** `global.setup.ts` authenticates once per run. Fixtures give each test an authorised API client (`firstUser`), a second user (`secondUser`) and an anonymous one (`noUser`). UI tests start from a saved browser state obtained through one real UI login.
@@ -113,12 +113,12 @@ tests/
 - **The exception: tests that check exact seat numbers.** Other people book the seeded events at the same time, so their seat counts can change in the middle of a test. Seven tests therefore create their own event through the API and delete it afterwards: the five in `bookings.seats.api.spec.ts`, and two UI tests (the plus button stops at the seats left; the card's "seats left" drops after a booking). `privateEvent` has 10 seats; `fiveSeatEvent` has 5, fewer than the 10-ticket limit, so the seats left are what stops a bigger booking.
 - **Events are created through the API, even for the UI tests.** Any user can create events in the UI ("Add New Event"), but creating events is not part of US-114: a broken event form should not fail a booking test, and the API is faster and more stable for setup. The booking itself is always done through the website.
 - **UI tests use the API only for setup and cleanup.** They open Events, read the price from the page and book through the form. The API is used for the login in setup, for the two own events above, and for cleanup.
-- **Cleanup by customer email.** Every test gets a unique customer (`customer.<run>-<n>@example.com`). After the test, the fixture lists all bookings (paged, see assumptions) and cancels those with that email, even if the test failed. A cleanup problem is a warning, not a test failure. "Clear all bookings" is never used.
+- **Cleanup by customer email.** Every test gets a unique customer (`customer.<run>-<n>@example.com`). After the test, the fixture lists all bookings (the list is paged, 10 per page) and cancels those with that email, even if the test failed. A cleanup problem is a warning, not a test failure. "Clear all bookings" is never used.
 - **Layering:** clients and page objects contain no assertions; specs own all assertions. Prices are read from the page as numbers (`parsePrice`), the expected total is computed as a number, and only then formatted back (`formatPrice`) to compare with the text on screen.
 - **Plain code over clever code.** Locators prefer ids, test ids, and button and heading names; where the app offers none, they use the visible text (error messages, row labels) or the `.booking-ref` class. `exact: true` only where one label sits inside another. The only regex in a test is the documented `EVT-` format check.
 - **Known issues are executable.** `docs-mismatch.api.spec.ts` asserts what the docs promise and is marked `test.fail`, so CI stays green while the mismatch exists and goes red when it is fixed, which is the cue to promote the test.
 
-**The 62 tests**
+### 3.2 The 62 tests
 
 | Group | Count | Covers |
 |---|---|---|
@@ -136,7 +136,7 @@ tests/
 
 Tests are independent of each other; the only ordering is the `setup` project that the others depend on.
 
-**Why these tests, and why this many**
+### 3.3 Why these tests, and why this many
 
 - **Every acceptance criterion is checked through the UI and through the API.** AC1-AC4 are what a user sees, so each has at least one UI test. AC5 says "the same works through the API", so AC1-AC4 are repeated through the API.
 - **Most of the tests are API tests (39 of 59, not counting setup).** Rules such as quantity limits, field validation, seat counts and access control are enforced by the server. Checking them through the API is fast and stable, and it gives a clear failure message. Each one is an edge case of the same request, so it is cheap to add.
@@ -146,21 +146,45 @@ Tests are independent of each other; the only ordering is the `setup` project th
 - **Known bugs are kept as tests** (`docs-mismatch`), so they are tracked in the suite instead of being forgotten.
 - **Eight tests are tagged `@smoke`:** the main path of each acceptance criterion, in the UI, through the API and one e2e test. They are a quick check after a deploy (`npm run test:smoke`).
 
-**How to add to the framework**
+### 3.4 How to add to the framework
 
-- **A new API endpoint:** add the types to `src/api/models/<resource>.ts`, add a client in `src/api/clients/` (one method per endpoint, it returns `toApiResponse(...)`, no assertions) and register it in `createApiClients` (`src/api/clients/index.ts`). Every user fixture (`firstUser`, `secondUser`, `noUser`) then has it, already authorised.
-- **A new page:** add a class in `src/ui/pages/` (locators and actions only) and a fixture for it in `src/fixtures/pageFixtures.ts`.
-- **New test data:** add a builder in `src/data/builders.ts`. If the data needs cleanup, add a fixture in `src/fixtures/dataFixtures.ts` that removes it after `use(...)`, so a test can never forget to clean up.
-- **A new spec:** put it in `tests/api`, `tests/ui` or `tests/e2e`. The Playwright projects pick it up by folder. Import `test` and `expect` from `src/fixtures`, never from `@playwright/test`.
-- **A new environment:** set `BASE_URL` / `API_URL`. No code changes are needed.
+#### A new API endpoint
+1. Add the request and response types to `src/api/models/<resource>.ts`.
+2. Add a client class in `src/api/clients/`: one method per endpoint, each returning `toApiResponse(...)`, no assertions.
+3. Register the client in `src/api/clients/index.ts`: add it to the `ApiClients` type and to `createApiClients`.
+
+Every user fixture (`firstUser`, `secondUser`, `noUser`) then has the new client, already authorised.
+
+#### A new page
+1. Add a class in `src/ui/pages/` with locators and actions only, no assertions.
+2. Add a fixture for it in `src/fixtures/pageFixtures.ts`.
+
+#### New test data
+1. Add a builder in `src/data/builders.ts` that returns unique values.
+2. If the data must be removed afterwards, add a fixture in `src/fixtures/dataFixtures.ts` that creates it, calls `use(...)`, then removes it. A test using the fixture can then never forget to clean up.
+
+#### A new spec
+1. Create the file in `tests/api`, `tests/ui` or `tests/e2e`, ending in `.spec.ts`. The Playwright projects pick it up by folder.
+2. Import `test` and `expect` from `src/fixtures`, never from `@playwright/test`.
+
+#### A new environment
+1. Set `BASE_URL` and `API_URL` (in `.env` locally, or as repository variables in CI). No code changes are needed.
 
 **Deliberately not covered:** admin pages, "Clear all bookings", cross-browser runs (Chromium only).
 
 ## 4. CI, configuration and secrets
 
-`.github/workflows/playwright.yml` runs on every push to any branch, and manually: checkout, Node LTS with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report as an artifact (`if: !cancelled()`, so failed runs keep their evidence). The report has screenshots of failed tests and traces of retried tests.
+`.github/workflows/playwright.yml` runs on every push to any branch, and can be started by hand from the Actions tab. The steps:
 
-- **Published report:** https://n0krashy.github.io/eventhub-playwright-ts/ (latest `main` run). On `main`, a second job deploys the HTML report to GitHub Pages, also when tests fail. The site is public, so the trace files are removed from that copy first: traces record typed values and request headers (the test password and Bearer token). The full report with traces stays in the run's artifact. Pages must be set to *Settings → Pages → Source: GitHub Actions*.
+1. Check out the code and set up Node (LTS, with npm cache).
+2. `npm ci` to install the exact dependency versions.
+3. Typecheck, to fail early on TypeScript errors.
+4. Install Chromium.
+5. Run all the tests, with the credentials passed in from secrets.
+6. Upload the HTML report as an artifact, even when tests fail, so failures keep their evidence. The report has screenshots of failed tests and traces of retried tests.
+7. On `main` only: remove the traces from a copy of the report and deploy that copy to GitHub Pages in a second job (see below).
+
+- **Published report:** https://n0krashy.github.io/eventhub-playwright-ts/ , the latest `main` run. Traces are left out because they contain the test password and token; the full report with traces is in the run's artifact.
 
 - **Configuration:** everything comes from environment variables, read in one file (`src/config/env.ts`). Locally they come from a git-ignored `.env`; `.env.example` documents the names.
 - **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**; the code has defaults.
