@@ -1,59 +1,108 @@
+# Name shown in the GitHub "Actions" tab.
 name: Playwright Tests
+
+# When the workflow runs.
 on:
+  # On every push to these branches.
   push:
     branches: [ main, master ]
+  # On every pull request that targets these branches.
   pull_request:
     branches: [ main, master ]
+  # Adds a "Run workflow" button in the Actions tab to start it by hand.
+  workflow_dispatch:
 
+# Default access of the GitHub token for every job: read the repository code only.
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
+  # Job 1: install, typecheck and run the tests, then save the report.
   test:
+    # Stop the job if it hangs for more than an hour.
     timeout-minutes: 60
+    # Run on a fresh GitHub-hosted Linux machine.
     runs-on: ubuntu-latest
     steps:
+    # Download the repository code onto the machine.
     - uses: actions/checkout@v4
+    # Install Node.js.
     - uses: actions/setup-node@v4
       with:
+        # Use the latest long-term-support version of Node.
         node-version: lts/*
+        # Cache downloaded npm packages between runs (keyed on package-lock.json).
+        cache: npm
     - name: Install dependencies
+      # Install the exact versions from package-lock.json.
       run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+    - name: Typecheck
+      # Fail early on TypeScript errors (runs "tsc --noEmit").
+      run: npm run typecheck
+    - name: Install Playwright Chromium
+      # Download Chromium plus the Linux libraries it needs (the only browser the suite uses).
+      run: npx playwright install --with-deps chromium
     - name: Run Playwright tests
+      # Run all projects: setup, api and ui.
       run: npx playwright test
+      # Values passed to the tests as environment variables (read in src/config/env.ts).
       env:
+        # Test account credentials, stored as repository secrets (masked in logs).
         EVENTHUB_EMAIL: ${{ secrets.EVENTHUB_EMAIL }}
         EVENTHUB_PASSWORD: ${{ secrets.EVENTHUB_PASSWORD }}
         EVENTHUB_EMAIL_2: ${{ secrets.EVENTHUB_EMAIL_2 }}
         EVENTHUB_PASSWORD_2: ${{ secrets.EVENTHUB_PASSWORD_2 }}
+        # Optional non-secret repository variables; the code has defaults when empty.
         BASE_URL: ${{ vars.BASE_URL }}
         API_URL: ${{ vars.API_URL }}
-    - uses: actions/upload-artifact@v4
+    - name: Upload full report (with traces) as an artifact
+      uses: actions/upload-artifact@v4
+      # Run even when tests failed, so failures keep their evidence (skip only if cancelled).
       if: ${{ !cancelled() }}
       with:
+        # Name of the downloadable file on the run's summary page.
         name: playwright-report
+        # Folder written by Playwright's HTML reporter.
         path: playwright-report/
+        # Delete the artifact after 30 days.
         retention-days: 30
+    # Traces record typed values and request headers (password, Bearer token),
+    # so they are removed from the copy that goes to the public Pages site.
+    - name: Remove traces from the public copy
+      # Only on the main branch, the one that publishes to Pages.
+      if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+      # Trace files are the .zip files inside the report's data folder.
+      run: rm -f playwright-report/data/*.zip
+    # Package the report folder in the format GitHub Pages expects.
     - uses: actions/upload-pages-artifact@v3
+      # Same condition: main branch only, even when tests failed.
       if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
       with:
         path: playwright-report/
 
+  # Job 2: publish the packaged report to GitHub Pages.
   deploy-report:
+    # Wait for the test job to finish first.
     needs: test
+    # Run even if tests failed, but only for the main branch.
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    # Extra token access needed only by this job to deploy to Pages.
+    permissions:
+      # Allow publishing to GitHub Pages.
+      pages: write
+      # Allow the deploy action to prove its identity to Pages (OIDC token).
+      id-token: write
+    # Allow only one Pages deployment at a time.
+    concurrency:
+      group: pages
+      # Let a running deployment finish instead of cancelling it for a newer one.
+      cancel-in-progress: false
+    # Link the job to the "github-pages" environment, which shows the site URL on the run page.
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+    # Deploy the artifact uploaded by the test job; "id" lets the URL above read its output.
     - id: deployment
       uses: actions/deploy-pages@v4

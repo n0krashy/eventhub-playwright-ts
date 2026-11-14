@@ -132,7 +132,9 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 ## 4. CI, configuration and secrets
 
-`.github/workflows/playwright.yml` runs on every push and pull request (and manually): checkout, Node 20 with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report and the traces/screenshots as artifacts (`if: !cancelled()`, so failed runs keep their evidence).
+`.github/workflows/playwright.yml` runs on every push and pull request (and manually): checkout, Node LTS with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report (with traces and screenshots) as an artifact (`if: !cancelled()`, so failed runs keep their evidence).
+
+- **Published report:** on `main`, a second job deploys the HTML report to GitHub Pages, also when tests fail. The site is public, so the trace files are removed from that copy first: traces record typed values and request headers (the test password and Bearer token). The full report with traces stays in the run's artifact. Pages must be set to *Settings → Pages → Source: GitHub Actions*.
 
 - **Configuration:** everything comes from environment variables, read in one file (`src/config/env.ts`). Locally they come from a git-ignored `.env`; `.env.example` documents the names.
 - **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**; the code has defaults.
@@ -162,5 +164,4 @@ Tests are independent of each other; the only ordering is the `setup` project th
 - Contract checks against the OpenAPI schema, and a second browser project.
 - Concurrency tests (two users racing for the last seat) once the PO defines the expected result.
 - Inspect the 43 console errors on the confirmation page and fail tests on unexpected ones.
-- Publish the HTML report to GitHub Pages.
 - Move the exploration probes into an `exploration/` folder.
