@@ -41,6 +41,7 @@ export class EventDetailsPage {
       nameInput: page.locator('#customerName'),
       emailInput: page.locator('#customer-email'),
       phoneInput: page.locator('#phone'),
+      // Same "Total" row as confirmation.total: the form and the confirmation card show it in the same place
       total: this.confirmationValue(page, 'Total'),
       confirmButton: page.locator('#confirm-booking'),
       nameError: page.getByText('Name must be at least 2 chars'),

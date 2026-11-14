@@ -27,7 +27,7 @@ async function getSession(credentials: Credentials): Promise<Session> {
         'Check the credentials in .env.',
     );
   }
-  return { email: res.body.user.email, userId: res.body.user.id, token: res.body.token };
+  return { email: res.body.user.email, token: res.body.token };
 }
 
 setup('the API is reachable', async () => {

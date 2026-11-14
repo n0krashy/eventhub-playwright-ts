@@ -43,18 +43,15 @@ test.describe('Event page - tickets and total price', () => {
 test.describe('Event page - ticket limits', () => {
   test.beforeEach(async ({ eventsPage }) => {
     await eventsPage.goto();
+    await eventsPage.openFirstEvent();
   });
 
-  test('the minus button is disabled at 1 ticket', async ({ eventsPage, eventDetailsPage }) => {
-    await eventsPage.openFirstEvent();
-
+  test('the minus button is disabled at 1 ticket', async ({ eventDetailsPage }) => {
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('1');
     await expect(eventDetailsPage.bookingForm.minusButton).toBeDisabled();
   });
 
-  test('the plus button is disabled at 10 tickets', async ({ eventsPage, eventDetailsPage }) => {
-    await eventsPage.openFirstEvent();
-
+  test('the plus button is disabled at 10 tickets', async ({ eventDetailsPage }) => {
     await eventDetailsPage.selectTickets(10);
 
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('10');

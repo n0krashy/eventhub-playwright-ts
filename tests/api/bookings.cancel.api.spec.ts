@@ -1,6 +1,9 @@
 import { expect, test } from '../../src/fixtures';
 import { createBooking } from '../../src/fixtures/bookingHelpers';
 
+// A booking id that cannot exist on the shared environment
+const BOOKING_THAT_DOES_NOT_EXIST = 999_999_999;
+
 test.describe('DELETE /bookings/{id} - cancel a booking', () => {
   test('cancels an existing booking', { tag: '@smoke' }, async ({ firstUser, bookableEvent, customer }) => {
     const booking = await createBooking(firstUser, bookableEvent.id, customer);
@@ -40,7 +43,7 @@ test.describe('DELETE /bookings/{id} - cancel a booking', () => {
   });
 
   test('cancelling a booking that never existed returns 404', async ({ firstUser }) => {
-    const res = await firstUser.bookings.cancel(999_999_999);
+    const res = await firstUser.bookings.cancel(BOOKING_THAT_DOES_NOT_EXIST);
 
     expect(res.status).toBe(404);
   });

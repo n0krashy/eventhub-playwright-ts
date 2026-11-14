@@ -1,6 +1,6 @@
 import type { APIRequestContext } from '@playwright/test';
 import type { MessageResponse } from '../models/common';
-import type { EventListResponse, EventResponse } from '../models/event';
+import type { EventInput, EventListResponse, EventResponse } from '../models/event';
 import { toApiResponse } from '../response';
 
 export class EventsClient {
@@ -17,7 +17,7 @@ export class EventsClient {
   }
 
   // create and delete are only used by the seat tests, which need an event of their own
-  async create(payload: object) {
+  async create(payload: EventInput) {
     const res = await this.request.post('events', { data: payload });
     return toApiResponse<EventResponse>(res);
   }

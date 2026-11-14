@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type Session = { email: string; userId: number; token: string };
+export type Session = { email: string; token: string };
 export type Sessions = { primary: Session; secondary: Session };
 
 const authFolder = path.resolve(process.cwd(), '.auth');

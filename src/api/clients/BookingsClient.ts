@@ -3,6 +3,7 @@ import type { BookingData, BookingListResponse, BookingResponse } from '../model
 import type { MessageResponse } from '../models/common';
 import { toApiResponse } from '../response';
 
+const PAGE_SIZE = 10;
 const MAX_PAGES = 50;
 
 export class BookingsClient {
@@ -20,7 +21,7 @@ export class BookingsClient {
     return toApiResponse<BookingListResponse>(res);
   }
 
-  // All of my bookings: asks for page after page until a page comes back empty
+  // All of my bookings: asks for page after page until a page is not full
   async listAll(): Promise<BookingData[]> {
     const allBookings: BookingData[] = [];
 
@@ -29,8 +30,8 @@ export class BookingsClient {
       if (res.status !== 200) {
         throw new Error(`GET /bookings?page=${page} failed: HTTP ${res.status} ${JSON.stringify(res.body)}`);
       }
-      if (res.body.data.length === 0) break;
       allBookings.push(...res.body.data);
+      if (res.body.data.length < PAGE_SIZE) break;
     }
 
     return allBookings;

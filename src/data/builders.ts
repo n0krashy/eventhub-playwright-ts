@@ -10,19 +10,18 @@ function nextId(): string {
   return `${runId}-${counter}`;
 }
 
-export function daysFromNow(days: number): string {
+function daysFromNow(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 export type Customer = { name: string; email: string; phone: string };
 
 // Every test gets its own customer. The unique email is how cleanup finds the test's bookings afterwards.
-export function buildCustomer(overrides: Partial<Customer> = {}): Customer {
+export function buildCustomer(): Customer {
   return {
     name: 'QA Tester',
     email: `customer.${nextId()}@example.com`,
     phone: '+971501234567',
-    ...overrides,
   };
 }
 
