@@ -41,8 +41,11 @@ test.describe('Event page - tickets and total price', () => {
 });
 
 test.describe('Event page - ticket limits', () => {
-  test('the minus button is disabled at 1 ticket', async ({ eventsPage, eventDetailsPage }) => {
+  test.beforeEach(async ({ eventsPage }) => {
     await eventsPage.goto();
+  });
+
+  test('the minus button is disabled at 1 ticket', async ({ eventsPage, eventDetailsPage }) => {
     await eventsPage.openFirstEvent();
 
     await expect(eventDetailsPage.bookingForm.ticketCount).toHaveText('1');
@@ -50,7 +53,6 @@ test.describe('Event page - ticket limits', () => {
   });
 
   test('the plus button is disabled at 10 tickets', async ({ eventsPage, eventDetailsPage }) => {
-    await eventsPage.goto();
     await eventsPage.openFirstEvent();
 
     await eventDetailsPage.selectTickets(10);
@@ -60,7 +62,6 @@ test.describe('Event page - ticket limits', () => {
   });
 
   test('the plus button stops at the number of seats left', async ({ eventsPage, eventDetailsPage }) => {
-    await eventsPage.goto();
     const seatsLeft = await eventsPage.seatsLeftOnAlmostSoldOutEvent();
     await eventsPage.openAlmostSoldOutEvent();
 
@@ -100,6 +101,17 @@ test.describe('Event page - form validation', () => {
 
     await eventDetailsPage.confirm();
 
+    await expect(eventDetailsPage.bookingForm.phoneError).toBeVisible();
+    await expect(eventDetailsPage.confirmation.heading).toBeHidden();
+  });
+
+  // Blank fields hit the same validation as invalid ones (same error text), so this
+  // only needs to check all three errors together, not one test per empty field.
+  test('shows an error for every field when the form is submitted empty', async ({ eventDetailsPage }) => {
+    await eventDetailsPage.confirm();
+
+    await expect(eventDetailsPage.bookingForm.nameError).toBeVisible();
+    await expect(eventDetailsPage.bookingForm.emailError).toBeVisible();
     await expect(eventDetailsPage.bookingForm.phoneError).toBeVisible();
     await expect(eventDetailsPage.confirmation.heading).toBeHidden();
   });

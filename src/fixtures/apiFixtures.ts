@@ -4,17 +4,16 @@ import { newApiContext } from '../api/context';
 import { loadSessions, type Sessions } from '../auth/session';
 
 // API clients. Tests never handle tokens: the login is done once, in tests/global.setup.ts
-type ApiFixtures = {
+// They are worker-scoped: one context per worker is reused by every test that worker runs,
+// since the clients are stateless wrappers around the token-authenticated request context.
+type WorkerFixtures = {
+  sessions: Sessions;
   firstUser: ApiClients; // logged in as the primary test user
   secondUser: ApiClients; // logged in as the second test user
   noUser: ApiClients; // not logged in
 };
 
-type WorkerFixtures = {
-  sessions: Sessions;
-};
-
-export const test = base.extend<ApiFixtures, WorkerFixtures>({
+export const test = base.extend<{}, WorkerFixtures>({
   sessions: [
     async ({}, use) => {
       await use(loadSessions());
@@ -22,21 +21,30 @@ export const test = base.extend<ApiFixtures, WorkerFixtures>({
     { scope: 'worker' },
   ],
 
-  firstUser: async ({ sessions }, use) => {
-    const context = await newApiContext(sessions.primary.token);
-    await use(createApiClients(context));
-    await context.dispose();
-  },
+  firstUser: [
+    async ({ sessions }, use) => {
+      const context = await newApiContext(sessions.primary.token);
+      await use(createApiClients(context));
+      await context.dispose();
+    },
+    { scope: 'worker' },
+  ],
 
-  secondUser: async ({ sessions }, use) => {
-    const context = await newApiContext(sessions.secondary.token);
-    await use(createApiClients(context));
-    await context.dispose();
-  },
+  secondUser: [
+    async ({ sessions }, use) => {
+      const context = await newApiContext(sessions.secondary.token);
+      await use(createApiClients(context));
+      await context.dispose();
+    },
+    { scope: 'worker' },
+  ],
 
-  noUser: async ({}, use) => {
-    const context = await newApiContext();
-    await use(createApiClients(context));
-    await context.dispose();
-  },
+  noUser: [
+    async ({}, use) => {
+      const context = await newApiContext();
+      await use(createApiClients(context));
+      await context.dispose();
+    },
+    { scope: 'worker' },
+  ],
 });

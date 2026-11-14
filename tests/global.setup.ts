@@ -38,8 +38,7 @@ setup('the API is reachable', async () => {
 });
 
 setup('log in both test users through the API', async () => {
-  const primary = await getSession(env.primary);
-  const secondary = await getSession(env.secondary);
+  const [primary, secondary] = await Promise.all([getSession(env.primary), getSession(env.secondary)]);
   saveSessions({ primary, secondary });
 });
 

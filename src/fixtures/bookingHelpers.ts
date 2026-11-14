@@ -24,12 +24,14 @@ export async function cancelBookingsOf(api: ApiClients, customer: Customer): Pro
     const allBookings = await api.bookings.listAll();
     const customerBookings = allBookings.filter((booking) => booking.customerEmail === customer.email);
 
-    for (const booking of customerBookings) {
-      const res = await api.bookings.cancel(booking.id);
-      if (res.status !== 200) {
-        console.warn(`Cleanup: could not cancel booking ${booking.id} (HTTP ${res.status})`);
-      }
-    }
+    await Promise.all(
+      customerBookings.map(async (booking) => {
+        const res = await api.bookings.cancel(booking.id);
+        if (res.status !== 200) {
+          console.warn(`Cleanup: could not cancel booking ${booking.id} (HTTP ${res.status})`);
+        }
+      }),
+    );
   } catch (error) {
     console.warn(`Cleanup: could not clean up the bookings of ${customer.email}: ${error}`);
   }

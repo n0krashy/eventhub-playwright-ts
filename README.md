@@ -34,6 +34,7 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 | 7 | **AC3 "My Bookings"** says nothing about ordering, paging, status, or what happens to a cancelled booking. `GET /bookings` is paged (10 per page by default) and the ordering is not specified. | Swagger (`PaginationMeta`, `page`, `limit`) |
 | 8 | **AC4 says "cancel", the system hard-deletes.** After cancelling, the booking is gone (`GET` returns 404), so the `cancelled` status listed in the docs never appears, and there is no history or refund notion. The story also omits that seats are returned and that a confirmation dialog appears. | Live |
 | 9 | **Capacity and dates are not covered:** sold-out behaviour, simultaneous bookings for the last seat, and bookings for events in the past. | Live (see 2.2) |
+| 10 | **The story says nothing about how booking-form validation should present:** one error summary or one error per field, and whether leaving a field empty should behave like an invalid value or like a separate "required" state. Live, an empty field shows the exact same per-field error text as an invalid one, and all three show together when the whole form is left blank, but AC1/AC2 never say that is the intended behaviour. | Live: `tests/ui/booking.ui.spec.ts` ("form validation" describe block) |
 
 ### 2.2 Where the application does not match the story or the docs
 
@@ -109,7 +110,7 @@ tests/
 - **Plain code over clever code.** Locators use ids, test ids, or button and heading names; `exact: true` only where one label sits inside another. The only regex-like check is the documented `EVT-` format test.
 - **Known issues are executable.** `docs-mismatch.api.spec.ts` asserts what the docs promise and is marked `test.fail`, so CI stays green while the mismatch exists and goes red when it is fixed, which is the cue to promote the test.
 
-**The 61 tests**
+**The 62 tests**
 
 | Group | Count | Covers |
 |---|---|---|
@@ -121,7 +122,7 @@ tests/
 | `api/bookings.access` | 7 | 401 without token, other user gets 403/403/not listed/404 |
 | `api/docs-mismatch` | 3 | ref format, `totalPrice` type, string quantity (all `test.fail`) |
 | `ui/auth` | 2 | login form |
-| `ui/booking` | 12 | stepper limits, live total, field errors, confirmation, appears in My Bookings |
+| `ui/booking` | 13 | stepper limits, live total, field errors (including empty form), confirmation, appears in My Bookings |
 | `ui/cancel` | 3 | dialog text, keep booking, confirm cancel (also after reload) |
 | `e2e/ui-api-consistency` | 2 | UI booking matches API; API booking shows in My Bookings |
 

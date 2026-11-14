@@ -41,8 +41,7 @@ export class EventDetailsPage {
       nameInput: page.locator('#customerName'),
       emailInput: page.locator('#customer-email'),
       phoneInput: page.locator('#phone'),
-      // The "Total" row has two spans: the word "Total" and the amount
-      total: page.getByText('Total', { exact: true }).locator('..').locator('span').last(),
+      total: this.confirmationValue(page, 'Total'),
       confirmButton: page.locator('#confirm-booking'),
       nameError: page.getByText('Name must be at least 2 chars'),
       emailError: page.getByText('Enter a valid email'),
@@ -59,8 +58,8 @@ export class EventDetailsPage {
     };
   }
 
-  // The confirmation card shows rows such as "Tickets   2".
-  // This returns the value part of the row with the given label.
+  // Both the "Book Tickets" form and the "Booking Confirmed!" card show rows
+  // such as "Total   $1,500". This returns the value part of the row with the given label.
   private confirmationValue(page: Page, label: string): Locator {
     const row = page.getByText(label, { exact: true }).locator('..');
     return row.locator('span').last();
