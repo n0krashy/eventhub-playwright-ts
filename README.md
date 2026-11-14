@@ -175,7 +175,7 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 ## 6. What I would do with more time
 
-- Run on a nightly schedule as well as on push, and track flaky tests over a few weeks. The whole suite already passes against the live site in CI; the shared seed data (seats drained by other users) is the most likely cause of future flakiness.
+- Run on a nightly schedule, and track flaky tests over a few weeks. The whole suite already passes against the live site in CI; the shared seed data (seats drained by other users) is the most likely cause of future flakiness.
 - Ask for `data-testid` attributes on the booking form and the confirmation rows.
 - Contract checks against the OpenAPI schema.
 - Run the UI tests on WebKit as well (Safari and every iOS browser use it), then Firefox.
