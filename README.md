@@ -26,7 +26,7 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 | # | Observation | Evidence |
 |---|---|---|
 | 1 | **"As a visitor" is wrong.** A visitor cannot book. Every endpoint returns `401 Unauthorized` without a token, and the UI is an authenticated app (user email and Logout in the nav). The story never mentions registering or logging in. | Probed live: `GET /events`, `GET /bookings`, `POST /bookings` without a token all return 401 |
-| 2 | **AC1 skips the real entry path:** log in, open Events, pick an event, then the booking form. The story starts at "choose the number of tickets". | UI walkthrough |
+| 2 | **The story has no preconditions.** Booking needs a logged-in user (row 1) and an event that is open for booking (future date, seats left). These belong in the story as preconditions, for example *"Given I am logged in and viewing an event that has seats available"*, so AC1 can rightly start at choosing the number of tickets. As written, it is not clear how the user reaches the form or which events can be booked. | UI walkthrough |
 | 3 | **AC5 is unclear.** "The same works through the API using `POST /api/bookings`" names only the create endpoint, but "the same" covers AC1-AC4, which also need listing (`GET /bookings`) and cancelling (`DELETE /bookings/{id}`). It does not say which fields must match the UI, or what an API failure must look like. The Swagger docs fill most of this in. | Brief, Swagger |
 | 4 | **Input rules are not in the story:** quantity 1-10, name at least 2 characters, phone at least 10 characters with digits and `+ - ( )` and spaces only, valid email. They exist only in code and Swagger. | Swagger + live validation errors |
 | 5 | **AC2 has no currency or rounding rule.** The UI shows `$`; the API has no currency field. Money is returned as a **string** (`"300"`). The total is computed server-side and shown live in the UI before confirming. | Live responses, UI |
@@ -59,7 +59,7 @@ Credentials for reviewers are supplied in the submission form (see `.env.example
 
 ### 2.3 Questions I would ask the Product Owner
 
-1. **Who can book?** Is login required (it is today)? Should the story and AC1 include registration and login?
+1. **Who can book?** Login is required today. Should the story state "logged-in user" as a precondition (and say "user" instead of "visitor")? Is registration in scope or a separate story?
 2. **Cancellation:** is a hard delete intended? Do we need a `cancelled` status for history, refunds or support? Is there a cut-off, for example no cancelling after the event?
 3. **Past events:** should they be bookable? If not, where is that enforced, and what should the user see?
 4. **Booking reference:** what is the official format, and is it emailed? The docs say `EVT-`, the system says `D-`.
