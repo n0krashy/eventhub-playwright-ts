@@ -145,17 +145,7 @@ Tests are independent of each other; the only ordering is the `setup` project th
 - **Forked pull requests** do not receive secrets, so the suite cannot authenticate there. That is intended.
 - Retries: 1 in CI, 0 locally. Traces on first retry. Workers: 2 in CI, because the environment is shared.
 
-## 5. Assumptions and live checks
-
-Checked against the live site on 2026-11-14:
-
-- `GET /bookings` is paged (10 per page). A page past the last one returns an empty `200`, which is what the cleanup relies on: it reads pages until one comes back empty (and fails loudly on any non-200).
-- `GET /events` is also paged (10 per page), but there are only 3 events today, so `bookableEvent` reads page 1 only. If the list ever grows past 10, that fixture must page too.
-- The event card says "N seats left!" when 10 or fewer seats are left (otherwise "N seats available").
-- Validation errors in the booking form appear after clicking Confirm Booking, not when leaving a field.
-- The minus button label is the true minus sign (U+2212), as in the page markup.
-
-Still assumptions:
+## 5. Assumptions
 
 - Login and registration are not part of US-114, so they are covered only as setup. An account is registered automatically when login fails.
 - The first event card is bookable. The seeded events are shared and drain over time (event 285 had 35 of 10,000 seats left). `bookableEvent` fails with a clear message when no event has 10 seats left; the UI tests have no such check and would fail on the booking itself.
