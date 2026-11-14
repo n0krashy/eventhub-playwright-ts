@@ -151,27 +151,22 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 ### 3.4 How to add to the framework
 
-#### A new API endpoint
-1. Add the request and response types to `src/api/models/<resource>.ts`.
-2. Add a client class in `src/api/clients/`: one method per endpoint, each returning `toApiResponse(...)`, no assertions.
-3. Register the client in `src/api/clients/index.ts`: add it to the `ApiClients` type and to `createApiClients`.
+- **A new API endpoint**
+  1. Add the request and response types to `src/api/models/<resource>.ts`.
+  2. Add a client class in `src/api/clients/`: one method per endpoint, each returning `toApiResponse(...)`, no assertions.
+  3. Register the client in `src/api/clients/index.ts`: add it to the `ApiClients` type and to `createApiClients`.
 
-Every user fixture (`firstUser`, `secondUser`, `noUser`) then has the new client, already authorised.
-
-#### A new page
-1. Add a class in `src/ui/pages/` with locators and actions only, no assertions.
-2. Add a fixture for it in `src/fixtures/pageFixtures.ts`.
-
-#### New test data
-1. Add a builder in `src/data/builders.ts` that returns unique values.
-2. If the data must be removed afterwards, add a fixture in `src/fixtures/dataFixtures.ts` that creates it, calls `use(...)`, then removes it. A test using the fixture can then never forget to clean up.
-
-#### A new spec
-1. Create the file in `tests/api`, `tests/ui` or `tests/e2e`, ending in `.spec.ts`. The Playwright projects pick it up by folder.
-2. Import `test` and `expect` from `src/fixtures`, never from `@playwright/test`.
-
-#### A new environment
-1. Set `BASE_URL` and `API_URL` (in `.env` locally, or as repository variables in CI). No code changes are needed.
+  Every user fixture (`firstUser`, `secondUser`, `noUser`) then has the new client, already authorised.
+- **A new page**
+  1. Add a class in `src/ui/pages/` with locators and actions only, no assertions.
+  2. Add a fixture for it in `src/fixtures/pageFixtures.ts`.
+- **New test data**
+  1. Add a builder in `src/data/builders.ts` that returns unique values.
+  2. If the data must be removed afterwards, add a fixture in `src/fixtures/dataFixtures.ts` that creates it, calls `use(...)`, then removes it. A test using the fixture can then never forget to clean up.
+- **A new spec**
+  1. Create the file in `tests/api`, `tests/ui` or `tests/e2e`, ending in `.spec.ts`. The Playwright projects pick it up by folder.
+  2. Import `test` and `expect` from `src/fixtures`, never from `@playwright/test`.
+- **A new environment:** set `BASE_URL` and `API_URL` (in `.env` locally, or as repository variables in CI). No code changes are needed.
 
 **Deliberately not covered:** admin pages, "Clear all bookings", cross-browser runs (Chromium only).
 
