@@ -3,12 +3,8 @@ name: Playwright Tests
 
 # When the workflow runs.
 on:
-  # On every push to these branches.
+  # On every push, to any branch.
   push:
-    branches: [ main, master ]
-  # On every pull request that targets these branches.
-  pull_request:
-    branches: [ main, master ]
   # Adds a "Run workflow" button in the Actions tab to start it by hand.
   workflow_dispatch:
 

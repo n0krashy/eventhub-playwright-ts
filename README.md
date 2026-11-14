@@ -130,11 +130,11 @@ tests/
 
 Tests are independent of each other; the only ordering is the `setup` project that the others depend on.
 
-**Deliberately not covered:** the Events list and search, admin pages, "Clear all bookings", cross-browser runs (Chromium only).
+**Deliberately not covered:** admin pages, "Clear all bookings", cross-browser runs (Chromium only).
 
 ## 4. CI, configuration and secrets
 
-`.github/workflows/playwright.yml` runs on every push and pull request (and manually): checkout, Node LTS with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report (with traces and screenshots) as an artifact (`if: !cancelled()`, so failed runs keep their evidence).
+`.github/workflows/playwright.yml` runs on every push to any branch, and manually: checkout, Node LTS with npm cache, `npm ci`, typecheck, install Chromium, run the tests, upload the HTML report as an artifact (`if: !cancelled()`, so failed runs keep their evidence). The report has screenshots of failed tests and traces of retried tests.
 
 - **Published report:** on `main`, a second job deploys the HTML report to GitHub Pages, also when tests fail. The site is public, so the trace files are removed from that copy first: traces record typed values and request headers (the test password and Bearer token). The full report with traces stays in the run's artifact. Pages must be set to *Settings → Pages → Source: GitHub Actions*.
 
@@ -142,8 +142,8 @@ Tests are independent of each other; the only ordering is the `setup` project th
 - **Non-sensitive values** (`BASE_URL`, `API_URL`) are optional repository **variables**; the code has defaults.
 - **Sensitive values**, the credentials of the two test accounts (`EVENTHUB_EMAIL`, `EVENTHUB_PASSWORD`, `EVENTHUB_EMAIL_2`, `EVENTHUB_PASSWORD_2`), are repository **secrets** mapped to environment variables. Nothing is hardcoded; passwords and tokens are never printed (a setup failure names the account email only). Tokens exist only in the git-ignored `.auth/` folder.
 - **The accounts are disposable** and used nowhere else, because the target is a shared public environment.
-- **Forked pull requests** do not receive secrets, so the suite cannot authenticate there. That is intended.
 - Retries: 1 in CI, 0 locally. Traces on first retry. Workers: 2 in CI, because the environment is shared.
+- A test that fails and then passes on the retry is marked "flaky" in the report, and the run stays green. Flaky tests should be checked in the report, not ignored.
 
 ## 5. Assumptions
 
@@ -156,7 +156,7 @@ Tests are independent of each other; the only ordering is the `setup` project th
 
 - Run against the live site in CI for a few weeks and track flakiness; fix any locator that does not match the real DOM.
 - Ask for `data-testid` attributes on the booking form and the confirmation rows.
-- Cover the Events list and search, and the keyboard and accessibility path of the form and the dialog.
-- Contract checks against the OpenAPI schema, and a second browser project.
+- Contract checks against the OpenAPI schema.
+- Run the UI tests on WebKit as well (Safari and every iOS browser use it), then Firefox.
 - Concurrency tests (two users racing for the last seat) once the PO defines the expected result.
 - Listen to browser console errors in the UI tests and fail on unexpected ones (none were logged on the booking pages during the live check).
